@@ -26,7 +26,12 @@
 *.exe
 *.out
 *.app
-
+/Debug
+/openCV2Test/Debug
+/ipch
+/openCV2Test/x64
+/x64
+*.opendb
 # =========================
 # Operating System Files
 # =========================
@@ -77,3 +82,4 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+.vs/openCV2Test/v14/.suo
