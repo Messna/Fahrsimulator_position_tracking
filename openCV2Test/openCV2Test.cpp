@@ -31,39 +31,27 @@
 using namespace std;
 BYTE buf[DEPTH_WIDTH * DEPTH_HIGHT * CHANNEL];
 
-std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, IplImage* color) {
+std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+	
 	std::vector<int*> cont;
-	//int* best_pos = new int[2]{ 0, 0 };
+	int* best_pos = new int[2]{ 0, 0 };
 	//long int min_error = 255 * 255 * 3;
 	int i= 0;
 	double red_sum = 0.0;
 	double blue_sum = 0.0;
 	double green_sum = 0.0;
 	
-	
-	//cv::Mat* matrix = new cv::Mat(cv::cvarrToMat(color));
-	//int x_mid = matrix->size[0] / 2;
-	//int y_mid = (matrix->size[1] * 1.333) / 2;
-	//std::cout << "x: " << x_mid << "y: " << y_mid << std::endl;
-	//std::cout << "Matrix-size: " <<  matrix->size[0] << " " << matrix->size[1] << std::endl;
-	for (int x = 0; x < color->width /*color->height*/; x++) {
-		for (int y = 0; y < color->height/*matrix->size[1]*1.333//COLOR_WIDTH*1.333 color->width*/; y++) {
+
+	for (int x = 0; x < color->width; x++) {
+		for (int y = 0; y < color->height; y++) {
 			CvScalar color_pxl = cvGet2D(color, y, x);
 			uint8_t green = uint8_t(color_pxl.val[0]),
 				blue = uint8_t(color_pxl.val[1]),
 				red = uint8_t(color_pxl.val[2]),
 				c4 = uint8_t(color_pxl.val[3]);
-			//std::cout << "G: " << (int)rgb << " B: " << (int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
-			//std::cout << x << " " << y << std::endl;
+			//target_color = RBG
+			if(abs(blue-target_color)) //findbest color 
 
-			//cv::Vec3b color_pixel = matrix->at<cv::Vec3b>(x, y);
-			//vl. GBR-Format
-			/*int red = color_pixel.val[0];
-			int green = color_pixel.val[1];
-			int blue = color_pixel.val[2];*/
-			/*int red = matrix->at<cv::Vec3b>(x, y)[0];
-			int green = matrix->at<cv::Vec3b>(x, y)[1];
-			int blue = matrix->at<cv::Vec3b>(x, y)[2];*/
 			if (red >= target_color_min[0] && red <= target_color_max[0] &&
 				green >= target_color_min[1] && green <= target_color_max[1] &&
 				blue >= target_color_min[2] && blue <= target_color_max[2]) {
@@ -85,35 +73,12 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 		}
 	}
 	
-	//std::cout << "( R:" << red_sum/i << ", G: " << green_sum/i << ", B: " << blue_sum/i << std::endl;
 
 	std::cout << "Points found: " << i << endl;
 
 	return cont;
 }
 
-int* get_seed_coordinates(double* target_color, IplImage* color) {
-	int* best_pos = new int[2] {0, 0};
-	long int min_error= 255*255*3;
-	cv::Mat* matrix = new cv::Mat(cv::cvarrToMat(color));
-	for (int x = 0; x < color->height; x++) {
-		for (int y = 0; y < color->width; y++) {
-			//std::cout << x << " " << y << std::endl;
-			cv::Vec3b color_pixel = matrix->at<cv::Vec3b>(x, y);
-			int diff_red = target_color[0] - color_pixel.val[0];
-			int diff_green = target_color[1] - color_pixel.val[1];
-			int diff_blue = target_color[2] - color_pixel.val[2];
-			long int current_error = diff_red*diff_red + diff_green*diff_green + diff_blue*diff_blue;
-			if (min_error > current_error) {
-				min_error = current_error;
-				best_pos[0] = x;
-				best_pos[1] = y;
-			}
-		}
-	}
-	
-	return best_pos;
-}
 
 IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "unknown") {
 	double toleranceFactor = 0.1;
@@ -121,9 +86,8 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
 	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
 	cv::Point textPos(0, 0);
-	//int* result = get_seed_coordinates2(rgb_min, rgb_max, color);
-	//std::cout << "Picture width: " << color->width << " height" << color->height << std::endl;
-	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, color);
+
+	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
 	cv::Mat output_frame(cv::cvarrToMat(color));
 	for (auto a : result) {
 
@@ -139,15 +103,16 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
 	cv::putText(output_frame, s, textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
-	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
-	//std::cout << result.size() << std::endl;
+
 	for (auto e : result) {
 		delete e;
 	}
 	cv::circle(output_frame, cv::Point(320,240), 10, cv::Scalar(0, 255, 0));
 	delete rgb_max;
 	delete rgb_min;
+	
 	return cvCloneImage(&(IplImage)output_frame);
+
 }
 
 IplImage* DrawCircleAtMiddle(IplImage* color) {
@@ -184,87 +149,35 @@ int drawColor(HANDLE h, IplImage* color) {
 		cb = uint8_t(color_pxl.val[2]),
 		c4 = uint8_t(color_pxl.val[3]);
 	std::cout << "G: "<< (int)rgb << " B: " <<(int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
-	color =	DrawCircleAtMiddle(color);
-	/************Draw circle in the middle of the image**************/
-	/*cv::Mat output_frame(cv::cvarrToMat(color));
-	cv::Point *target2 = new cv::Point(320, 240);
-	cv::circle(output_frame, *target2, 10, cv::Scalar(0, 255, 0));
-	*/
-	/************Draw circle in the middle of the image**************/
+	//color =	DrawCircleAtMiddle(color);
 
 	/*****************Find different colors and mark them on image*******************/
 	int* rgb_target;
-	
-	//rgb_target = new int[3]{ 220, 0, 80 };
-	//rgb_target = new int[3]{ 160, 0, 70 };
+	IplImage* tmp_color = nullptr;
 	rgb_target = new int[3]{ 190, 70, 60 };
 	color = findColorAndMark(rgb_target, color, "Red");
+	//delete color;
+	//color = tmp_color;
 	delete[] rgb_target;
 
 	
-	
-	//rgb_target = new int[3]{ 100, 0, 80 };
-
 	rgb_target = new int[3]{ 74, 94, 154 };
-	//rgb_target = new int[3]{ 0, 255, 0 };
 	color = findColorAndMark(rgb_target, color, "Green");
+	//delete color;
+	//color = tmp_color;
 	delete[] rgb_target;
 	
-
-	//rgb_target = new int[3]{ 0, 0, 255 };
 	rgb_target = new int[3]{ 52, 111, 65 };
 	color = findColorAndMark(rgb_target, color, "Blue");
+	//delete color;
+	//color = tmp_color;
 	delete[] rgb_target;
 	
 	/*****************Find different colors and mark them on image*******************/
-
-	//double toleranceFactor = 0.3;
-	//double range = toleranceFactor * 255;
-	//double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
-	//double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
-
-	////int* result = get_seed_coordinates2(rgb_min, rgb_max, color);
-	//std::cout << "Picture width: " << color->width << " height" << color->height << std::endl;
-	//std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, color);
-	//cv::Mat output_frame(cv::cvarrToMat(color));
-	//for (auto a : result) {
-	//	
-	//	cv::Point *target = new cv::Point(int(0.5 +a[0] * 0.75), a[1]);
-	//	cv::circle(output_frame, *target, 2, cv::Scalar(0, 255, 0));
-	//}
-	////std::cout << result[0][1] << " " << result[0][0] << std::endl;
-	//std::cout << result.size() << std::endl;
-
-	//std::cout << result[0] << ", " << result[1]  << std::endl;
-	
-	//cv::Point *target2 = new cv::Point(320, 240);
-//	cv::Point *target = new cv::Point(result[1], result[0]);
-	
-	/*
-	cv::circle(output_frame, *target, 10, cv::Scalar(0, 255, 0));*/
-	//cv::circle(color, *target2, 10, cv::Scalar(255, 255, 255));
-
-	
-
-	/*try {
-		cv::Mat * output_frame = new cv::Mat(cv::cvarrToMat(color));
-		cv::circle(*output_frame, *target, 10, cv::Scalar(0, 255, 0));
-		*color = *output_frame;
-		cvShowImage("color image", output_frame);
-		delete output_frame;
-		
-	}
-	catch (exception & exc) {
-		std::cout << exc.what() << std::endl;*/
-
-
 	
 	cvShowImage("color image", color);
-	//CvMouseCallback("color image", onMouse);
-	//}
-	NuiImageStreamReleaseFrame(h, pImageFrame);
 	
-	//delete target;
+	NuiImageStreamReleaseFrame(h, pImageFrame);
 	return 0;
 }
 
@@ -448,13 +361,13 @@ int main(int argc, char * argv[]) {
 
 	IplImage* color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HIGHT), IPL_DEPTH_8U, 4);
 
-	IplImage* depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HIGHT), IPL_DEPTH_8U, CHANNEL);
+	//IplImage* depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HIGHT), IPL_DEPTH_8U, CHANNEL);
 
 	//IplImage* skeleton = cvCreateImage(cvSize(SKELETON_WIDTH, SKELETON_HIGHT), IPL_DEPTH_8U, CHANNEL);
 
 	cvNamedWindow("color image", CV_WINDOW_AUTOSIZE);
 
-	cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
+	//cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
 
 	//cvNamedWindow("skeleton image", CV_WINDOW_AUTOSIZE);
 
@@ -502,8 +415,9 @@ int main(int argc, char * argv[]) {
 	{
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2, color);
-		WaitForSingleObject(h3, INFINITE);
-		drawDepth(h4, depth);
+		delete color->imageData;
+//		WaitForSingleObject(h3, INFINITE);
+//		drawDepth(h4, depth);
 		//WaitForSingleObject(h5, INFINITE);
 		//drawSkeleton(skeleton);
 
@@ -513,10 +427,11 @@ int main(int argc, char * argv[]) {
 			break;
 	}
 
-	cvReleaseImageHeader(&depth);
+//	cvReleaseImageHeader(&depth);
 	cvReleaseImageHeader(&color);
+	
 	//cvReleaseImage(&skeleton);
-	cvDestroyWindow("depth image");
+//	cvDestroyWindow("depth image");
 	cvDestroyWindow("color image");
 	//cvDestroyWindow("skeleton image");
 
