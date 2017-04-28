@@ -50,7 +50,7 @@ bool has_target_color(double* target_color_max, double* target_color_min, CvScal
 	return false;
 }
 void findNeighbors(int x, int y, double* target_color_max, double* target_color_min, IplImage* color, std::map<std::pair<int, int>, bool>& stack) {
-	if ((stack.find(std::make_pair(x, y)) != stack.end()) && has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x))) {
+	if ((stack.find(std::make_pair(x, y)) == stack.end()) && has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x))) {
 		stack[(std::make_pair(x, y))] = true;
 		if (x > 0) {
 			findNeighbors(x - 1, y, target_color_max, target_color_min, color, stack);
