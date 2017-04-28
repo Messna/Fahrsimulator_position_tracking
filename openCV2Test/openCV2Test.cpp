@@ -31,6 +31,8 @@
 using namespace std;
 BYTE buf[DEPTH_WIDTH * DEPTH_HIGHT * CHANNEL];
 
+const float a = 0.00173667;
+
 std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, IplImage* color) {
 	std::vector<int*> cont;
 	//int* best_pos = new int[2]{ 0, 0 };
@@ -128,7 +130,7 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	for (auto a : result) {
 
 		cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
-		cv::circle(output_frame, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+		cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 		if (textPos.x < target->x &&textPos.y < target->y) {
 			textPos.x = target->x + 2;
 			textPos.y = target->y + 2;
@@ -138,26 +140,24 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	cv::putText(output_frame, s, textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
+	cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
 	for (auto e : result) {
 		delete e;
 	}
-	cv::circle(output_frame, cv::Point(320,240), 10, cv::Scalar(0, 255, 0));
+	cvCircle(color, cv::Point(320, 240), 10, cv::Scalar(0, 255, 0));
 	delete rgb_max;
 	delete rgb_min;
-	return cvCloneImage(&(IplImage)output_frame);
+	return color;
 }
 
 IplImage* DrawCircleAtMiddle(IplImage* color) {
-	cv::Mat output_frame(cv::cvarrToMat(color));
-	cv::circle(output_frame, cv::Point(320, 240), 10, cv::Scalar(0, 255, 0));
-	return cvCloneImage(&(IplImage)output_frame);
+	cvCircle(color, cv::Point(320, 240), 10, cv::Scalar(0, 255, 0));
+	return color;
 }
 
 int drawColor(HANDLE h, IplImage* color) {
-	
 	
 	const NUI_IMAGE_FRAME * pImageFrame = NULL;
 	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
@@ -443,6 +443,21 @@ int drawSkeleton(IplImage* skeleton) {
 	return 0;
 }
 
+int calcRealX(int x, int z) {
+	return (x - 320) * a * z;
+}
+
+int calcRealY(int y, int z) {
+	return (y - 320) * a * z;
+}
+
+static void onMouse(int event, int x, int y, int f, void*) {
+	CvFont font;
+	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
+	cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
+	std::cout << x << ", " << y << " - " << calcRealX(x, 50) << ", " << calcRealY(y, 50) << std::endl;
+}
+
 int main(int argc, char * argv[]) {
 	
 
@@ -455,6 +470,8 @@ int main(int argc, char * argv[]) {
 	cvNamedWindow("color image", CV_WINDOW_AUTOSIZE);
 
 	cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
+
+	cv::setMouseCallback("color image", onMouse);
 
 	//cvNamedWindow("skeleton image", CV_WINDOW_AUTOSIZE);
 
