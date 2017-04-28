@@ -83,3 +83,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 .vs/openCV2Test/v14/.suo
+openCV2Test.VC.db
