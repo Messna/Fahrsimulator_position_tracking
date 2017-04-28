@@ -1,6 +1,8 @@
 // openCV2Test.cpp : Definiert den Einstiegspunkt für die Konsolenanwendung.
 //
 #include <vector>
+#include <map>
+#include <utility>
 
 #include "stdafx.h"
 
@@ -32,11 +34,60 @@ using namespace std;
 BYTE buf[DEPTH_WIDTH * DEPTH_HIGHT * CHANNEL];
 
 const float a = 0.00173667;
-std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
 
-	std::vector<int*> cont;
+bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
+	uint8_t green = uint8_t(color_pxl.val[0]),
+		blue = uint8_t(color_pxl.val[1]),
+		red = uint8_t(color_pxl.val[2]),
+		c4 = uint8_t(color_pxl.val[3]);
+	//target_color = RBG
+
+	if (red >= target_color_min[0] && red <= target_color_max[0] &&
+		green >= target_color_min[1] && green <= target_color_max[1] &&
+		blue >= target_color_min[2] && blue <= target_color_max[2]) {
+		return true;
+	}
+	return false;
+}
+void findNeighbors(int x, int y, double* target_color_max, double* target_color_min, IplImage* color, std::map<std::pair<int, int>, bool>& stack) {
+	if ((stack.find(std::make_pair(x, y)) != stack.end()) && has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x))) {
+		stack[(std::make_pair(x, y))] = true;
+		if (x > 0) {
+			findNeighbors(x - 1, y, target_color_max, target_color_min, color, stack);
+		}
+		if (y > 0) {
+			findNeighbors(x, y-1, target_color_max, target_color_min, color, stack);
+		}
+		if (x < color->width) {
+			findNeighbors(x + 1, y, target_color_max, target_color_min, color, stack);
+		}
+		if (y < color->height) {
+			findNeighbors(x, y + 1, target_color_max, target_color_min, color, stack);
+		}
+	}
+}
+
+void region_growing(int* start, double* target_color_max, double* target_color_min, IplImage* color) {
+	std::map<std::pair<int, int>, bool> stack;
+	findNeighbors(start[0], start[1], target_color_max, target_color_min, color, stack);
+	long int sum_x = 0;
+	long int sum_y = 0;
+	for (auto a : stack) {
+		sum_x += a.first.first;
+		sum_y += a.first.second;
+	}
+	if (stack.size() != 0) {
+		
+		start[0] = sum_x / stack.size();
+		start[1] = sum_y / stack.size();
+	}
+}
+//std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+int* get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+
+	//std::vector<int*> cont;
 	int* best_pos = new int[2]{ 0, 0 };
-	//long int min_error = 255 * 255 * 3;
+	long int min_error = 255 * 255 * 255;
 	int i= 0;
 	double red_sum = 0.0;
 	double blue_sum = 0.0;
@@ -51,18 +102,24 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 				red = uint8_t(color_pxl.val[2]),
 				c4 = uint8_t(color_pxl.val[3]);
 			//target_color = RBG
-			if(abs(blue-target_color[1])) //findbest color 
-
+			
 			if (red >= target_color_min[0] && red <= target_color_max[0] &&
 				green >= target_color_min[1] && green <= target_color_max[1] &&
 				blue >= target_color_min[2] && blue <= target_color_max[2]) {
+
 				int x2 = x*1.333;
-				int *a = new int[2]{ x2, y };
-				cont.push_back(a);
-				i++;
-				red_sum += red;
-				green_sum += green;
-				blue_sum += blue;
+				//int *a = new int[2]{ x2, y };
+				//cont.push_back(a);
+				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
+					min_error = abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]);
+					best_pos[0] = x2;
+					best_pos[1] = y;
+				}
+				
+				//i++;
+				//red_sum += red;
+				//green_sum += green;
+				//blue_sum += blue;
 				//std::cout << "( R:" << red << ", G: " << green << ", B: " << blue << " ) found";
 			}
 			
@@ -74,32 +131,39 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 		}
 	}
 	
+	region_growing(best_pos, target_color_max, target_color_min, color);
 
-	std::cout << "Points found: " << i << endl;
+	//std::cout << "Points found: " << i << endl;
 
-	return cont;
+	return best_pos;
 }
 
 
 IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "unknown") {
-	double toleranceFactor = 0.1;
+	double toleranceFactor = 0.05;
 	double range = toleranceFactor * 255;
 	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
 	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
 	cv::Point textPos(0, 0);
 
-	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
+	//std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
+	int * a = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
 	cv::Mat output_frame(cv::cvarrToMat(color));
-	for (auto a : result) {
+	//for (auto a : result) {
 
-		cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
-		cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
-		if (textPos.x < target->x &&textPos.y < target->y) {
-			textPos.x = target->x + 2;
-			textPos.y = target->y + 2;
-		}
-		delete target;
+	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
+	cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	if (textPos.x < target->x &&textPos.y < target->y) {
+		textPos.x = target->x + 2;
+		textPos.y = target->y + 2;
 	}
+	delete target;
+	delete[] a;
+	//}
+
+	/*for (auto e : result) {
+		delete e;
+	}*/
 
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
@@ -108,9 +172,6 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
 
-	for (auto e : result) {
-		delete e;
-	}
 	cvCircle(color, cv::Point(320, 240), 10, cv::Scalar(0, 255, 0));
 	delete rgb_max;
 	delete rgb_min;
@@ -158,7 +219,7 @@ int drawColor(HANDLE h, IplImage* color) {
 	/*****************Find different colors and mark them on image*******************/
 	int* rgb_target;
 	IplImage* tmp_color = nullptr;
-	rgb_target = new int[3]{ 190, 70, 60 };
+	rgb_target = new int[3]{ 140, 38, 31 };
 	color = findColorAndMark(rgb_target, color, "Red");
 	//delete color;
 	//color = tmp_color;
@@ -371,7 +432,7 @@ int calcRealY(int y, int z) {
 static void onMouse(int event, int x, int y, int f, void*) {
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
+	//cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
 	std::cout << x << ", " << y << " - " << calcRealX(x, 50) << ", " << calcRealY(y, 50) << std::endl;
 }
 
@@ -436,7 +497,7 @@ int main(int argc, char * argv[]) {
 	{
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2, color);
-		delete color->imageData;
+		//delete color->imageData;
 //		WaitForSingleObject(h3, INFINITE);
 //		drawDepth(h4, depth);
 		//WaitForSingleObject(h5, INFINITE);
