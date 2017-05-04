@@ -36,6 +36,7 @@ BYTE buf[DEPTH_WIDTH * DEPTH_HIGHT * CHANNEL];
 const float a = 0.00173667;
 
 bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
+	
 	uint8_t green = uint8_t(color_pxl.val[0]),
 		blue = uint8_t(color_pxl.val[1]),
 		red = uint8_t(color_pxl.val[2]),
@@ -47,11 +48,18 @@ bool has_target_color(double* target_color_max, double* target_color_min, CvScal
 		blue >= target_color_min[2] && blue <= target_color_max[2]) {
 		return true;
 	}
+	
 	return false;
 }
-void findNeighbors(int x, int y, double* target_color_max, double* target_color_min, IplImage* color, std::map<std::pair<int, int>, bool>& stack) {
-	if ((stack.find(std::make_pair(x, y)) == stack.end()) && has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x))) {
+
+void findNeighbors(int x, int y, double* target_color_max, 
+					double* target_color_min, IplImage* color, 
+					std::map<std::pair<int, int>, bool>& stack) {
+	
+	if ((stack.find(std::make_pair(x, y)) == stack.end()) && 
+			has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x/1.333))) {
 		stack[(std::make_pair(x, y))] = true;
+		
 		if (x > 0) {
 			findNeighbors(x - 1, y, target_color_max, target_color_min, color, stack);
 		}
@@ -69,23 +77,84 @@ void findNeighbors(int x, int y, double* target_color_max, double* target_color_
 
 void region_growing(int* start, double* target_color_max, double* target_color_min, IplImage* color) {
 	std::map<std::pair<int, int>, bool> stack;
-	findNeighbors(start[0], start[1], target_color_max, target_color_min, color, stack);
+	
+	try
+	{
+		findNeighbors(start[0], start[1], target_color_max, target_color_min, color, stack);
+
+	}
+	catch (const std::exception &e)
+	{
+		std::cout << "Exception at findNeighbors-call" << std::endl;
+	}
 	long int sum_x = 0;
 	long int sum_y = 0;
-	for (auto a : stack) {
-		sum_x += a.first.first;
-		sum_y += a.first.second;
-	}
 	if (stack.size() != 0) {
-		
+		for (auto a : stack) {
+			sum_x += a.first.first;
+			sum_y += a.first.second;
+		}
 		start[0] = sum_x / stack.size();
 		start[1] = sum_y / stack.size();
 	}
 }
-//std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
-int* get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+	std::vector<int*> cont;
+	int* best_pos = new int[2]{ 0, 0 };
+	long int min_error = 255 * 255 * 255;
+	int i = 0;
+	double red_sum = 0.0;
+	double blue_sum = 0.0;
+	double green_sum = 0.0;
 
-	//std::vector<int*> cont;
+
+	for (int x = 0; x < color->width; x++) {
+		for (int y = 0; y < color->height; y++) {
+			CvScalar color_pxl = cvGet2D(color, y, x);
+			uint8_t green = uint8_t(color_pxl.val[0]),
+				blue = uint8_t(color_pxl.val[1]),
+				red = uint8_t(color_pxl.val[2]),
+				c4 = uint8_t(color_pxl.val[3]);
+			//target_color = RBG
+
+			if (red >= target_color_min[0] && red <= target_color_max[0] &&
+				green >= target_color_min[1] && green <= target_color_max[1] &&
+				blue >= target_color_min[2] && blue <= target_color_max[2]) {
+
+				int x2 = x*1.333;
+				int *a = new int[2]{ x2, y };
+				cont.push_back(a);
+				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
+					min_error = abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]);
+					best_pos[0] = x2;
+					best_pos[1] = y;
+				}
+
+				i++;
+				//red_sum += red;
+				//green_sum += green;
+				//blue_sum += blue;
+				//std::cout << "( R:" << red << ", G: " << green << ", B: " << blue << " ) found";
+			}
+
+
+			/*if(x == x_mid && y == y_mid){
+			std::cout << "Middle-Color: ( R:" <<red << ", G: " << green << ", B: " << blue << std::endl;
+			}*/
+
+		}
+	}
+
+	//region_growing(best_pos, target_color_max, target_color_min, color);
+
+	std::cout << "Points found: " << i << endl;
+
+	return cont;
+
+}
+int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+
+
 	int* best_pos = new int[2]{ 0, 0 };
 	long int min_error = 255 * 255 * 255;
 	int i= 0;
@@ -108,35 +177,21 @@ int* get_seed_coordinates2(double* target_color_max, double* target_color_min, i
 				blue >= target_color_min[2] && blue <= target_color_max[2]) {
 
 				int x2 = x*1.333;
-				//int *a = new int[2]{ x2, y };
-				//cont.push_back(a);
+
 				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
 					min_error = abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]);
 					best_pos[0] = x2;
 					best_pos[1] = y;
 				}
-				
-				//i++;
-				//red_sum += red;
-				//green_sum += green;
-				//blue_sum += blue;
-				//std::cout << "( R:" << red << ", G: " << green << ", B: " << blue << " ) found";
 			}
-			
-			
-			/*if(x == x_mid && y == y_mid){
-					std::cout << "Middle-Color: ( R:" <<red << ", G: " << green << ", B: " << blue << std::endl;
-			}*/
-		
 		}
 	}
 	
 	region_growing(best_pos, target_color_max, target_color_min, color);
 
-	//std::cout << "Points found: " << i << endl;
-
 	return best_pos;
 }
+
 
 
 IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "unknown") {
@@ -146,24 +201,44 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
 	cv::Point textPos(0, 0);
 
-	//std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
-	int * a = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
+	
+/*	
+	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
 	cv::Mat output_frame(cv::cvarrToMat(color));
-	//for (auto a : result) {
+	for (auto a : result) {
+
+		cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
+		
+		cvCircle(color, *target, 2, cv::Scalar(169, 169, 169));
+		//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+		if (textPos.x < target->x &&textPos.y < target->y) {
+			textPos.x = target->x + 2;
+			textPos.y = target->y + 2;
+		}
+		delete target;
+	}
+	for (auto e : result) {
+		delete e;
+	}
+	*/
+	
+	int * a = get_seed_coordinates3(rgb_max, rgb_min, rgb_target, color);
+	cv::Mat output_frame(cv::cvarrToMat(color));
+
 
 	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
-	cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	
+	cvCircle(color, *target, 1, cv::Scalar(0, 0, 0));
+	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 	if (textPos.x < target->x &&textPos.y < target->y) {
 		textPos.x = target->x + 2;
 		textPos.y = target->y + 2;
 	}
 	delete target;
 	delete[] a;
-	//}
 
-	/*for (auto e : result) {
-		delete e;
-	}*/
+
+	
 
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
@@ -225,14 +300,15 @@ int drawColor(HANDLE h, IplImage* color) {
 	//color = tmp_color;
 	delete[] rgb_target;
 
-	
-	rgb_target = new int[3]{ 74, 94, 154 };
+
+	rgb_target = new int[3]{ 68, 115, 112 };
 	color = findColorAndMark(rgb_target, color, "Green");
 	//delete color;
 	//color = tmp_color;
 	delete[] rgb_target;
 	
-	rgb_target = new int[3]{ 52, 111, 65 };
+
+	rgb_target = new int[3]{ 70, 120, 70 };
 	color = findColorAndMark(rgb_target, color, "Blue");
 	//delete color;
 	//color = tmp_color;
@@ -466,7 +542,7 @@ int main(int argc, char * argv[]) {
 
 	HANDLE h1 = CreateEvent(NULL, TRUE, FALSE, NULL);
 	HANDLE h2 = NULL;
-	hr = NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_640x480,
+	hr = NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_1280x960,
 		0, 2, h1, &h2);
 
 	if (FAILED(hr))
