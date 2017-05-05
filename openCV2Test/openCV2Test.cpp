@@ -307,7 +307,41 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	int channelCount = depth->nChannels;
 
 	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			int index = y * width + x;
+			unsigned short pixelVal = pBuff[index];
+			int grayVal = (pixelVal - MIN_DIST) / scale + 1;
 
+			if (pixelVal <= MIN_DIST) {
+				grayVal = 0;
+			}
+			else if (pixelVal >=  MAX_DIST) {
+				grayVal = 255;
+			}
+
+			buf[channelCount * index] = buf[channelCount * index + 1] = buf[channelCount * index + 2] = grayVal;
+
+
+			if (pixelVal > MIN_DIST && pixelVal < MAX_DIST) {
+				returnArray[x][y] = pixelVal;
+				sum += pixelVal;
+				if (pixelVal < minVal) {
+					minVal = pixelVal;
+				}
+				if (pixelVal > maxVal) {
+					maxVal = pixelVal;
+				}
+				count++;
+			}
+			else if (pixelVal >= MAX_DIST) {
+				returnArray[x][y] = MAX_DIST;
+			}
+			else if (pixelVal <= MIN_DIST) {
+				returnArray[x][y] = MIN_DIST;
+			}
+
+			
+		}
 	}
 
 	cvSetData(depth, buf, width * CHANNEL);
