@@ -86,3 +86,4 @@ $RECYCLE.BIN/
 openCV2Test.VC.db
 *.db
 
+openCV2Test/openCV2Test.vcxproj
