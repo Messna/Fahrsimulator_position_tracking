@@ -542,7 +542,7 @@ int main(int argc, char * argv[]) {
 
 	HANDLE h1 = CreateEvent(NULL, TRUE, FALSE, NULL);
 	HANDLE h2 = NULL;
-	hr = NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_1280x960,
+	hr = NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_640x480,
 		0, 2, h1, &h2);
 
 	if (FAILED(hr))
