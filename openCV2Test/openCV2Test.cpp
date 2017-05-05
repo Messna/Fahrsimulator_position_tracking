@@ -107,9 +107,6 @@ double* Get3DCoordinates(double* angles, int** depthArr) {
 	//check range of index
 	if (idxDepthX >= 0 && idxDepthX < DEPTH_WIDTH && idxDepthY >= 0 && idxDepthY < DEPTH_HEIGHT) {
 		double depthValZ = depthArr[idxDepthX][idxDepthY];
-		//TODO check correction!!!
-		depthValZ *= 1.204;
-
 
 		double realWorldZ = depthValZ / 10.0; //convert from mm to cm
 		double realWorldX = tan(GetRadianFromDegree(colorAngleX)) * realWorldZ;
@@ -434,15 +431,13 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	}
 	USHORT * pBuff = (USHORT*)LockedRect.pBits;
 
-	//std::cout << "DEPTH img w=" << depth->width << " h=" << depth->height << " #channels=" << depth->nChannels << std::endl;
-
 	int minVal = 100000;
 	int maxVal = -10000;
 	double sum = 0.0;
 	int count = 0;
 
-	const int MIN_DIST = 6400;
-	const int MAX_DIST = 31800;
+	const int MIN_DIST = 800;
+	const int MAX_DIST = 3000;
 
 	double range = MAX_DIST - MIN_DIST;
 	double scale = range / 254.0;
@@ -452,7 +447,7 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
 			int index = y * width + x;
-			unsigned short pixelVal = pBuff[index];
+			unsigned short pixelVal = pBuff[index] >> 3;
 			int grayVal = (pixelVal - MIN_DIST) / scale + 1;
 
 			if (pixelVal <= MIN_DIST) {
@@ -482,8 +477,6 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 			else if (pixelVal <= MIN_DIST) {
 				returnArray[x][y] = MIN_DIST;
 			}
-
-			
 		}
 	}
 
@@ -494,201 +487,8 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	depthLockedRect = LockedRect;
 
 	sum /= (count);
-	//std::cout << "# valid pixels = " << count << " avg = " << sum << " min=" << minVal << " maX=" << maxVal << std::endl;
 
 	return returnArray;
-}
-
-
-//int drawDepth(HANDLE h, IplImage* depth) {
-//	const NUI_IMAGE_FRAME * pImageFrame = NULL;
-//	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
-//	if (FAILED(hr))
-//	{
-//		cout << "Get Image Frame Failed" << endl;
-//		return -1;
-//	}
-//	//  temp1 = depth;
-//	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
-//	NUI_LOCKED_RECT LockedRect;
-//	pTexture->LockRect(0, &LockedRect, NULL, 0);
-//	if (LockedRect.Pitch != 0)
-//	{
-//		USHORT * pBuff = (USHORT*)LockedRect.pBits;
-//		for (int i = 0; i < DEPTH_WIDTH * DEPTH_HIGHT; i++)
-//		{
-//			BYTE index = pBuff[i] & 0x07;
-//			USHORT realDepth = (pBuff[i] & 0xFFF8) >> 3;
-//			BYTE scale = 255 - (BYTE)(256 * realDepth / 0x0fff);
-//
-//			buf[CHANNEL * i] = buf[CHANNEL * i + 1] = buf[CHANNEL * i + 2] = 0;
-//			switch (index)
-//			{
-//			case 0:
-//				buf[CHANNEL * i] = scale / 2;
-//				buf[CHANNEL * i + 1] = scale / 2;
-//				buf[CHANNEL * i + 2] = scale / 2;
-//				break;
-//			case 1:
-//				buf[CHANNEL * i] = scale;
-//				break;
-//			case 2:
-//				buf[CHANNEL * i + 1] = scale;
-//				break;
-//			case 3:
-//				buf[CHANNEL * i + 2] = scale;
-//				break;
-//			case 4:
-//				buf[CHANNEL * i] = scale;
-//				buf[CHANNEL * i + 1] = scale;
-//				break;
-//			case 5:
-//				buf[CHANNEL * i] = scale;
-//				buf[CHANNEL * i + 2] = scale;
-//				break;
-//			case 6:
-//				buf[CHANNEL * i + 1] = scale;
-//				buf[CHANNEL * i + 2] = scale;
-//				break;
-//			case 7:
-//				buf[CHANNEL * i] = 255 - scale / 2;
-//				buf[CHANNEL * i + 1] = 255 - scale / 2;
-//				buf[CHANNEL * i + 2] = 255 - scale / 2;
-//				break;
-//			}
-//		}
-//		cvSetData(depth, buf, DEPTH_WIDTH * CHANNEL);
-//	}
-//	NuiImageStreamReleaseFrame(h, pImageFrame);
-//	cvShowImage("depth image", depth);
-//	
-//	depthLockedRect = LockedRect;
-//	return 0;
-//}
-
-int drawSkeleton(IplImage* skeleton) {
-	NUI_SKELETON_FRAME SkeletonFrame;
-	CvPoint pt[20];
-	HRESULT hr = NuiSkeletonGetNextFrame(0, &SkeletonFrame);
-	bool bFoundSkeleton = false;
-	for (int i = 0; i < NUI_SKELETON_COUNT; i++)
-	{
-		if (SkeletonFrame.SkeletonData[i].eTrackingState
-			== NUI_SKELETON_TRACKED)
-		{
-			bFoundSkeleton = true;
-		}
-	}
-	// Has skeletons!
-	//
-	if (bFoundSkeleton)
-	{
-		NuiTransformSmooth(&SkeletonFrame, NULL);
-		memset(skeleton->imageData, 0, skeleton->imageSize);
-		for (int i = 0; i < NUI_SKELETON_COUNT; i++)
-		{
-			if (SkeletonFrame.SkeletonData[i].eTrackingState
-				== NUI_SKELETON_TRACKED)
-			{
-				for (int j = 0; j < NUI_SKELETON_POSITION_COUNT; j++)
-				{
-					float fx, fy;
-					NuiTransformSkeletonToDepthImage(
-						SkeletonFrame.SkeletonData[i].SkeletonPositions[j],
-						&fx, &fy);
-					pt[j].x = (int)(fx * SKELETON_WIDTH + 0.5f);
-					pt[j].y = (int)(fy * SKELETON_HEIGHT + 0.5f);
-					cvCircle(skeleton, pt[j], 5, CV_RGB(255, 0, 0), -1);
-				}
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_HEAD],
-					pt[NUI_SKELETON_POSITION_SHOULDER_CENTER],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_SHOULDER_CENTER],
-					pt[NUI_SKELETON_POSITION_SPINE], CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_SPINE],
-					pt[NUI_SKELETON_POSITION_HIP_CENTER],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_HAND_RIGHT],
-					pt[NUI_SKELETON_POSITION_WRIST_RIGHT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_WRIST_RIGHT],
-					pt[NUI_SKELETON_POSITION_ELBOW_RIGHT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_ELBOW_RIGHT],
-					pt[NUI_SKELETON_POSITION_SHOULDER_RIGHT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_SHOULDER_RIGHT],
-					pt[NUI_SKELETON_POSITION_SHOULDER_CENTER],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_SHOULDER_CENTER],
-					pt[NUI_SKELETON_POSITION_SHOULDER_LEFT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_SHOULDER_LEFT],
-					pt[NUI_SKELETON_POSITION_ELBOW_LEFT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_ELBOW_LEFT],
-					pt[NUI_SKELETON_POSITION_WRIST_LEFT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_WRIST_LEFT],
-					pt[NUI_SKELETON_POSITION_HAND_LEFT], CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_HIP_CENTER],
-					pt[NUI_SKELETON_POSITION_HIP_RIGHT], CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_HIP_RIGHT],
-					pt[NUI_SKELETON_POSITION_KNEE_RIGHT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_KNEE_RIGHT],
-					pt[NUI_SKELETON_POSITION_ANKLE_RIGHT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_ANKLE_RIGHT],
-					pt[NUI_SKELETON_POSITION_FOOT_RIGHT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_HIP_CENTER],
-					pt[NUI_SKELETON_POSITION_HIP_LEFT], CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_HIP_LEFT],
-					pt[NUI_SKELETON_POSITION_KNEE_LEFT], CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_KNEE_LEFT],
-					pt[NUI_SKELETON_POSITION_ANKLE_LEFT],
-					CV_RGB(0, 255, 0));
-
-				cvLine(skeleton, pt[NUI_SKELETON_POSITION_ANKLE_LEFT],
-					pt[NUI_SKELETON_POSITION_FOOT_LEFT], CV_RGB(0, 255, 0));
-			}
-		}
-	}
-	cvShowImage("skeleton image", skeleton);
-	return 0;
-}
-
-//double* getPoint3DFromDepthCoordinates(double x, double y, double z) {
-//	double pixelPerAngle = 58.5 / 320;
-//	double angleRange = x - 58.5 / 2 + pixelPerAngle * x;
-//	
-//}
-
-double calcRealX(int x, double z) {
-	return x - 160 + (x - 160) * a * z;
-}
-
-double calcRealY(int y, double z) {
-	return y - 120 + (y - 120) * a * z;
 }
 
 static void onMouse(int event, int x, int y, int f, void*) {
@@ -699,8 +499,6 @@ static void onMouse(int event, int x, int y, int f, void*) {
 	int depthY = y / 2;
 
 	double depthVal = depthImg[depthX][depthY] / 100.0;
-
-	cout << depthX << ", " << depthY << " , Real: Z:" << depthVal << ", X:" << calcRealX(depthX, depthVal) << ", Y:" << calcRealY(depthY, depthVal) << endl;
 
 	double* colorAngleArr = GetAngleFromColorIndex(x, y);
 	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
@@ -713,20 +511,15 @@ int main(int argc, char * argv[]) {
 
 	depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HEIGHT), IPL_DEPTH_8U, CHANNEL);
 
-	//IplImage* skeleton = cvCreateImage(cvSize(SKELETON_WIDTH, SKELETON_HIGHT), IPL_DEPTH_8U, CHANNEL);
-
 	cvNamedWindow("color image", CV_WINDOW_AUTOSIZE);
 
 	cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
 
 	cv::setMouseCallback("color image", onMouse);
 
-	//cvNamedWindow("skeleton image", CV_WINDOW_AUTOSIZE);
-
 	HRESULT hr = NuiInitialize(
 		NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX
-		| NUI_INITIALIZE_FLAG_USES_COLOR
-		/*| NUI_INITIALIZE_FLAG_USES_SKELETON*/);
+		| NUI_INITIALIZE_FLAG_USES_COLOR);
 
 	if (hr != S_OK)
 	{
@@ -755,24 +548,13 @@ int main(int argc, char * argv[]) {
 		return hr;
 	}
 
-	HANDLE h5 = CreateEvent(NULL, TRUE, FALSE, NULL);
-	hr = NuiSkeletonTrackingEnable(h5, 0);
-	if (FAILED(hr))
-	{
-		cout << "Could not open skeleton stream video" << endl;
-		return hr;
-	}
-
 	while (1)
 	{
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2, color);
 		WaitForSingleObject(h3, INFINITE);
 		depthImg = getDepthImage(h4, depth, 320, 240);
-		//WaitForSingleObject(h5, INFINITE);
-		//drawSkeleton(skeleton);
 
-		//exit
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
@@ -781,10 +563,8 @@ int main(int argc, char * argv[]) {
 	cvReleaseImageHeader(&depth);
 	cvReleaseImageHeader(&color);
 	
-	//cvReleaseImage(&skeleton);
 	cvDestroyWindow("depth image");
 	cvDestroyWindow("color image");
-	//cvDestroyWindow("skeleton image");
 
 	NuiShutdown();
 
