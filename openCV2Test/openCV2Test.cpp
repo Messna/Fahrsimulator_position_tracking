@@ -1,4 +1,4 @@
-// openCV2Test.cpp : Definiert den Einstiegspunkt für die Konsolenanwendung.
+// openCV2Test.cpp : Definiert den Einstiegspunkt fÃ¼r die Konsolenanwendung.
 //
 #include <vector>
 #include <map>
@@ -8,6 +8,8 @@
 
 #include <Windows.h>
 #include <iostream>
+
+#include <math.h>
 
 #include "NuiApi.h"
 #include "NuiImageCamera.h"
@@ -24,17 +26,107 @@
 #include<opencv2/objdetect/objdetect.hpp>
 */
 #define COLOR_WIDTH 640    
-#define COLOR_HIGHT 480    
+#define COLOR_HEIGHT 480    
 #define DEPTH_WIDTH 320    
-#define DEPTH_HIGHT 240    
+#define DEPTH_HEIGHT 240    
 #define SKELETON_WIDTH 640    
-#define SKELETON_HIGHT 480    
+#define SKELETON_HEIGHT 480    
 #define CHANNEL 3
 using namespace std;
-BYTE buf[DEPTH_WIDTH * DEPTH_HIGHT * CHANNEL];
+BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 
 const float a = 0.00173667;
+const float fovDepthX = 58.5;
+const float fovDepthY = 46.6;
+const float fovColorX = 62;
+const float fovColorY = 48.6;
 const double generalTolerance = 0.05;
+
+IplImage* color;
+IplImage* depth;
+int** depthImg;
+NUI_LOCKED_RECT depthLockedRect;
+
+#define PI 3.14159265358979323846
+
+double GetRadianFromDegree(double angleInDegree) {
+	return angleInDegree * PI / 180.0;
+}
+
+double GetDegreeFromRadian(double angleInRadian) {
+	return angleInRadian * 180.0 / PI;
+}
+
+//return 2 angles, for horizontal (x) and vertical (y)
+double* GetAngleFromColorIndex(int colorX, int colorY) {
+	double coordMidX = COLOR_WIDTH / 2.0 - 0.5;
+	double coordMidY = COLOR_HEIGHT / 2.0 - 0.5;
+	double* returnArr = new double[2] {-100, -100};
+
+	double width = tan(GetRadianFromDegree(fovColorX / 2.0)) * 2;
+	double height = tan(GetRadianFromDegree(fovColorY / 2.0)) * 2;
+	double widthStep = width / (COLOR_WIDTH - 1);
+	double heightStep = height / (COLOR_HEIGHT - 1);
+
+	double centeredX = colorX - coordMidX;
+	double centeredY = colorY - coordMidY;
+
+	double trueAngleX = GetDegreeFromRadian(atan(centeredX * widthStep));
+	double trueAngleY = GetDegreeFromRadian(atan(centeredY * heightStep));
+
+	cout << " for coords (" << colorX << ";" << colorY << ") the degrees are (" << trueAngleX << ";" << trueAngleY << ")" << endl;
+
+	returnArr[0] = trueAngleX;
+	returnArr[1] = trueAngleY;
+	return returnArr;
+}
+
+double* Get3DCoordinates(double* angles, int** depthArr) {
+
+	double* realWorldCoords = new double[3] {-1000, -1000, -1000};
+
+	double colorAngleX = angles[0];
+	double colorAngleY = angles[1];
+
+	double width = tan(GetRadianFromDegree(fovDepthX / 2.0)) * 2;
+	double height = tan(GetRadianFromDegree(fovDepthY / 2.0)) * 2;
+	double widthStep = width / (DEPTH_WIDTH - 1);
+	double heightStep = height / (DEPTH_HEIGHT - 1);
+
+	double coordMidX = DEPTH_WIDTH / 2.0 - 0.5;
+	double coordMidY = DEPTH_HEIGHT / 2.0 - 0.5;
+
+	double distX = tan(GetRadianFromDegree(colorAngleX));
+	double distY = tan(GetRadianFromDegree(colorAngleY));
+
+
+	//calc index position in depth array
+	int idxDepthX = (int)(distX / widthStep + coordMidX + 0.5);
+	int idxDepthY = (int)(distY / heightStep + coordMidY + 0.5);
+
+	//check range of index
+	if (idxDepthX >= 0 && idxDepthX < DEPTH_WIDTH && idxDepthY >= 0 && idxDepthY < DEPTH_HEIGHT) {
+		double depthValZ = depthArr[idxDepthX][idxDepthY];
+		//TODO check correction!!!
+		depthValZ *= 1.204;
+
+
+		double realWorldZ = depthValZ / 10.0; //convert from mm to cm
+		double realWorldX = tan(GetRadianFromDegree(colorAngleX)) * realWorldZ;
+		double realWorldY = tan(GetRadianFromDegree(colorAngleY)) * realWorldZ;
+		realWorldCoords[0] = realWorldX;
+		realWorldCoords[1] = realWorldY;
+		realWorldCoords[2] = realWorldZ;
+
+		std::cout << "3D pos in cm: (" << realWorldX << ";" << realWorldY << ";" << realWorldZ << ")" << std::endl;
+
+	}
+	else {
+		std::cout << "3D pos in cm: ERROR: out of FoV!!! " << std::endl;
+		return realWorldCoords;
+	}
+		
+}
 
 bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
 	
@@ -148,7 +240,7 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 
 	//region_growing(best_pos, target_color_max, target_color_min, color);
 
-	std::cout << "Points found: " << i << endl;
+	//std::cout << "Points found: " << i << endl;
 
 	return cont;
 
@@ -289,35 +381,30 @@ int drawColor(HANDLE h, IplImage* color) {
 		cg = uint8_t(color_pxl.val[1]),
 		cb = uint8_t(color_pxl.val[2]),
 		c4 = uint8_t(color_pxl.val[3]);
-	std::cout << "G: "<< (int)rgb << " B: " <<(int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
-	//color =	DrawCircleAtMiddle(color);
+	//std::cout << "G: "<< (int)rgb << " B: " <<(int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
 
 	/*****************Find different colors and mark them on image*******************/
 	//Color-Format = RBG
 	int* rgb_target;
+
 	IplImage* tmp_color = nullptr;
 	//rgb_target = new int[3]{ 140, 38, 31 };
 
 	rgb_target = new int[3]{ 190, 75, 82 };
+
 	color = findColorAndMark(rgb_target, color, "Red");
-	//delete color;
-	//color = tmp_color;
 	delete[] rgb_target;
 
 
 	//rgb_target = new int[3]{ 68, 115, 112 };
 	rgb_target = new int[3]{ 21, 83, 90 };
 	color = findColorAndMark(rgb_target, color, "Green");
-	//delete color;
-	//color = tmp_color;
 	delete[] rgb_target;
 	
 
 	//rgb_target = new int[3]{ 70, 120, 70 };
 	rgb_target = new int[3]{ 86, 133, 88 };
 	color = findColorAndMark(rgb_target, color, "Blue");
-	//delete color;
-	//color = tmp_color;
 	delete[] rgb_target;
 	
 	/*****************Find different colors and mark them on image*******************/
@@ -328,69 +415,156 @@ int drawColor(HANDLE h, IplImage* color) {
 	return 0;
 }
 
-int drawDepth(HANDLE h, IplImage* depth) {
+int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
+
 	const NUI_IMAGE_FRAME * pImageFrame = NULL;
 	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
-	if (FAILED(hr))
-	{
-		cout << "Get Image Frame Failed" << endl;
-		return -1;
+
+	int** returnArray = new int*[width];
+	for (int i = 0; i < width; i++) {
+		returnArray[i] = new int[height];
 	}
-	//  temp1 = depth;
+
 	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
 	NUI_LOCKED_RECT LockedRect;
 	pTexture->LockRect(0, &LockedRect, NULL, 0);
-	if (LockedRect.Pitch != 0)
+	if (LockedRect.Pitch == 0)
 	{
-		USHORT * pBuff = (USHORT*)LockedRect.pBits;
-		for (int i = 0; i < DEPTH_WIDTH * DEPTH_HIGHT; i++)
-		{
-			BYTE index = pBuff[i] & 0x07;
-			USHORT realDepth = (pBuff[i] & 0xFFF8) >> 3;
-			BYTE scale = 255 - (BYTE)(256 * realDepth / 0x0fff);
-			buf[CHANNEL * i] = buf[CHANNEL * i + 1] = buf[CHANNEL * i + 2] = 0;
-			switch (index)
-			{
-			case 0:
-				buf[CHANNEL * i] = scale / 2;
-				buf[CHANNEL * i + 1] = scale / 2;
-				buf[CHANNEL * i + 2] = scale / 2;
-				break;
-			case 1:
-				buf[CHANNEL * i] = scale;
-				break;
-			case 2:
-				buf[CHANNEL * i + 1] = scale;
-				break;
-			case 3:
-				buf[CHANNEL * i + 2] = scale;
-				break;
-			case 4:
-				buf[CHANNEL * i] = scale;
-				buf[CHANNEL * i + 1] = scale;
-				break;
-			case 5:
-				buf[CHANNEL * i] = scale;
-				buf[CHANNEL * i + 2] = scale;
-				break;
-			case 6:
-				buf[CHANNEL * i + 1] = scale;
-				buf[CHANNEL * i + 2] = scale;
-				break;
-			case 7:
-				buf[CHANNEL * i] = 255 - scale / 2;
-				buf[CHANNEL * i + 1] = 255 - scale / 2;
-				buf[CHANNEL * i + 2] = 255 - scale / 2;
-				break;
-			}
-		}
-		cvSetData(depth, buf, DEPTH_WIDTH * CHANNEL);
+		return returnArray;
 	}
+	USHORT * pBuff = (USHORT*)LockedRect.pBits;
+
+	//std::cout << "DEPTH img w=" << depth->width << " h=" << depth->height << " #channels=" << depth->nChannels << std::endl;
+
+	int minVal = 100000;
+	int maxVal = -10000;
+	double sum = 0.0;
+	int count = 0;
+
+	const int MIN_DIST = 6400;
+	const int MAX_DIST = 31800;
+
+	double range = MAX_DIST - MIN_DIST;
+	double scale = range / 254.0;
+
+	int channelCount = depth->nChannels;
+
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			int index = y * width + x;
+			unsigned short pixelVal = pBuff[index];
+			int grayVal = (pixelVal - MIN_DIST) / scale + 1;
+
+			if (pixelVal <= MIN_DIST) {
+				grayVal = 0;
+			}
+			else if (pixelVal >=  MAX_DIST) {
+				grayVal = 255;
+			}
+
+			buf[channelCount * index] = buf[channelCount * index + 1] = buf[channelCount * index + 2] = grayVal;
+
+
+			if (pixelVal > MIN_DIST && pixelVal < MAX_DIST) {
+				returnArray[x][y] = pixelVal;
+				sum += pixelVal;
+				if (pixelVal < minVal) {
+					minVal = pixelVal;
+				}
+				if (pixelVal > maxVal) {
+					maxVal = pixelVal;
+				}
+				count++;
+			}
+			else if (pixelVal >= MAX_DIST) {
+				returnArray[x][y] = MAX_DIST;
+			}
+			else if (pixelVal <= MIN_DIST) {
+				returnArray[x][y] = MIN_DIST;
+			}
+
+			
+		}
+	}
+
+	cvSetData(depth, buf, width * CHANNEL);
 	NuiImageStreamReleaseFrame(h, pImageFrame);
 	cvShowImage("depth image", depth);
-	
-	return 0;
+
+	depthLockedRect = LockedRect;
+
+	sum /= (count);
+	//std::cout << "# valid pixels = " << count << " avg = " << sum << " min=" << minVal << " maX=" << maxVal << std::endl;
+
+	return returnArray;
 }
+
+
+//int drawDepth(HANDLE h, IplImage* depth) {
+//	const NUI_IMAGE_FRAME * pImageFrame = NULL;
+//	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
+//	if (FAILED(hr))
+//	{
+//		cout << "Get Image Frame Failed" << endl;
+//		return -1;
+//	}
+//	//  temp1 = depth;
+//	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
+//	NUI_LOCKED_RECT LockedRect;
+//	pTexture->LockRect(0, &LockedRect, NULL, 0);
+//	if (LockedRect.Pitch != 0)
+//	{
+//		USHORT * pBuff = (USHORT*)LockedRect.pBits;
+//		for (int i = 0; i < DEPTH_WIDTH * DEPTH_HIGHT; i++)
+//		{
+//			BYTE index = pBuff[i] & 0x07;
+//			USHORT realDepth = (pBuff[i] & 0xFFF8) >> 3;
+//			BYTE scale = 255 - (BYTE)(256 * realDepth / 0x0fff);
+//
+//			buf[CHANNEL * i] = buf[CHANNEL * i + 1] = buf[CHANNEL * i + 2] = 0;
+//			switch (index)
+//			{
+//			case 0:
+//				buf[CHANNEL * i] = scale / 2;
+//				buf[CHANNEL * i + 1] = scale / 2;
+//				buf[CHANNEL * i + 2] = scale / 2;
+//				break;
+//			case 1:
+//				buf[CHANNEL * i] = scale;
+//				break;
+//			case 2:
+//				buf[CHANNEL * i + 1] = scale;
+//				break;
+//			case 3:
+//				buf[CHANNEL * i + 2] = scale;
+//				break;
+//			case 4:
+//				buf[CHANNEL * i] = scale;
+//				buf[CHANNEL * i + 1] = scale;
+//				break;
+//			case 5:
+//				buf[CHANNEL * i] = scale;
+//				buf[CHANNEL * i + 2] = scale;
+//				break;
+//			case 6:
+//				buf[CHANNEL * i + 1] = scale;
+//				buf[CHANNEL * i + 2] = scale;
+//				break;
+//			case 7:
+//				buf[CHANNEL * i] = 255 - scale / 2;
+//				buf[CHANNEL * i + 1] = 255 - scale / 2;
+//				buf[CHANNEL * i + 2] = 255 - scale / 2;
+//				break;
+//			}
+//		}
+//		cvSetData(depth, buf, DEPTH_WIDTH * CHANNEL);
+//	}
+//	NuiImageStreamReleaseFrame(h, pImageFrame);
+//	cvShowImage("depth image", depth);
+//	
+//	depthLockedRect = LockedRect;
+//	return 0;
+//}
 
 int drawSkeleton(IplImage* skeleton) {
 	NUI_SKELETON_FRAME SkeletonFrame;
@@ -423,7 +597,7 @@ int drawSkeleton(IplImage* skeleton) {
 						SkeletonFrame.SkeletonData[i].SkeletonPositions[j],
 						&fx, &fy);
 					pt[j].x = (int)(fx * SKELETON_WIDTH + 0.5f);
-					pt[j].y = (int)(fy * SKELETON_HIGHT + 0.5f);
+					pt[j].y = (int)(fy * SKELETON_HEIGHT + 0.5f);
 					cvCircle(skeleton, pt[j], 5, CV_RGB(255, 0, 0), -1);
 				}
 
@@ -503,33 +677,47 @@ int drawSkeleton(IplImage* skeleton) {
 	return 0;
 }
 
-int calcRealX(int x, int z) {
-	return (x - 320) * a * z;
+//double* getPoint3DFromDepthCoordinates(double x, double y, double z) {
+//	double pixelPerAngle = 58.5 / 320;
+//	double angleRange = x - 58.5 / 2 + pixelPerAngle * x;
+//	
+//}
+
+double calcRealX(int x, double z) {
+	return x - 160 + (x - 160) * a * z;
 }
 
-int calcRealY(int y, int z) {
-	return (y - 320) * a * z;
+double calcRealY(int y, double z) {
+	return y - 120 + (y - 120) * a * z;
 }
 
 static void onMouse(int event, int x, int y, int f, void*) {
-	CvFont font;
-	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	//cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
-	std::cout << x << ", " << y << " - " << calcRealX(x, 50) << ", " << calcRealY(y, 50) << std::endl;
+	//CvFont font;
+	//cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
+	//cvPutText(color, "test", CvPoint(100, 100), &font, cv::Scalar(0.0, 0.0, 0.0));	
+	int depthX = x / 2;
+	int depthY = y / 2;
+
+	double depthVal = depthImg[depthX][depthY] / 100.0;
+
+	cout << depthX << ", " << depthY << " , Real: Z:" << depthVal << ", X:" << calcRealX(depthX, depthVal) << ", Y:" << calcRealY(depthY, depthVal) << endl;
+
+	double* colorAngleArr = GetAngleFromColorIndex(x, y);
+	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
 }
 
 int main(int argc, char * argv[]) {
 	
 
-	IplImage* color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HIGHT), IPL_DEPTH_8U, 4);
+	color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HEIGHT), IPL_DEPTH_8U, 4);
 
-	//IplImage* depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HIGHT), IPL_DEPTH_8U, CHANNEL);
+	depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HEIGHT), IPL_DEPTH_8U, CHANNEL);
 
 	//IplImage* skeleton = cvCreateImage(cvSize(SKELETON_WIDTH, SKELETON_HIGHT), IPL_DEPTH_8U, CHANNEL);
 
 	cvNamedWindow("color image", CV_WINDOW_AUTOSIZE);
 
-	//cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
+	cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
 
 	cv::setMouseCallback("color image", onMouse);
 
@@ -579,9 +767,8 @@ int main(int argc, char * argv[]) {
 	{
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2, color);
-		//delete color->imageData;
-//		WaitForSingleObject(h3, INFINITE);
-//		drawDepth(h4, depth);
+		WaitForSingleObject(h3, INFINITE);
+		depthImg = getDepthImage(h4, depth, 320, 240);
 		//WaitForSingleObject(h5, INFINITE);
 		//drawSkeleton(skeleton);
 
@@ -591,37 +778,17 @@ int main(int argc, char * argv[]) {
 			break;
 	}
 
-//	cvReleaseImageHeader(&depth);
+	cvReleaseImageHeader(&depth);
 	cvReleaseImageHeader(&color);
 	
 	//cvReleaseImage(&skeleton);
-//	cvDestroyWindow("depth image");
+	cvDestroyWindow("depth image");
 	cvDestroyWindow("color image");
 	//cvDestroyWindow("skeleton image");
 
 	NuiShutdown();
 
 	return 0;
-
-	//cv::VideoCapture cap('0'); // open the default camera
-	//if (!cap.isOpened())  // check if we succeeded
-	//	return -1;
-
-	//cv::Mat edges;
-	//cv::namedWindow("edges", 1);
-	//for (;;)
-	//{
-	//	cv::Mat frame;
-	//	cap >> frame; // get a new frame from camera
-	//	cvtColor(frame, edges, CV_BGR2HSV);
-	//	GaussianBlur(edges, edges, cv::Size(7, 7), 1.5, 1.5);
-	//	Canny(edges, edges, 0, 30, 3);
-	//	imshow("edges", edges);
-	//	std::cout << "Output" << std::endl;
-	//	//if (cv::waitKey(300) >= 0) break;
-	//}
-	//std::cin.get();
-	//return 0;
 }
 
 
