@@ -34,6 +34,7 @@ using namespace std;
 BYTE buf[DEPTH_WIDTH * DEPTH_HIGHT * CHANNEL];
 
 const float a = 0.00173667;
+const double generalTolerance = 0.05;
 
 bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
 	
@@ -194,8 +195,8 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 
 
 
-IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "unknown") {
-	double toleranceFactor = 0.05;
+IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "unknown", double toleranceFactor = generalTolerance) {
+	
 	double range = toleranceFactor * 255;
 	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
 	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
@@ -247,7 +248,7 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
 
-	cvCircle(color, cv::Point(320, 240), 10, cv::Scalar(0, 255, 0));
+	cvCircle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
 	delete rgb_max;
 	delete rgb_min;
 
@@ -258,7 +259,7 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 }
 
 IplImage* DrawCircleAtMiddle(IplImage* color) {
-	cvCircle(color, cv::Point(320, 240), 10, cv::Scalar(0, 255, 0));
+	cvCircle(color, cv::Point(320, 240), 5, cv::Scalar(0, 255, 0));
 	return color;
 }
 
@@ -292,23 +293,28 @@ int drawColor(HANDLE h, IplImage* color) {
 	//color =	DrawCircleAtMiddle(color);
 
 	/*****************Find different colors and mark them on image*******************/
+	//Color-Format = RBG
 	int* rgb_target;
 	IplImage* tmp_color = nullptr;
-	rgb_target = new int[3]{ 140, 38, 31 };
+	//rgb_target = new int[3]{ 140, 38, 31 };
+
+	rgb_target = new int[3]{ 190, 75, 82 };
 	color = findColorAndMark(rgb_target, color, "Red");
 	//delete color;
 	//color = tmp_color;
 	delete[] rgb_target;
 
 
-	rgb_target = new int[3]{ 68, 115, 112 };
+	//rgb_target = new int[3]{ 68, 115, 112 };
+	rgb_target = new int[3]{ 21, 83, 90 };
 	color = findColorAndMark(rgb_target, color, "Green");
 	//delete color;
 	//color = tmp_color;
 	delete[] rgb_target;
 	
 
-	rgb_target = new int[3]{ 70, 120, 70 };
+	//rgb_target = new int[3]{ 70, 120, 70 };
+	rgb_target = new int[3]{ 86, 133, 88 };
 	color = findColorAndMark(rgb_target, color, "Blue");
 	//delete color;
 	//color = tmp_color;
