@@ -28,9 +28,7 @@
 #define COLOR_WIDTH 640    
 #define COLOR_HEIGHT 480    
 #define DEPTH_WIDTH 320    
-#define DEPTH_HEIGHT 240    
-#define SKELETON_WIDTH 640    
-#define SKELETON_HEIGHT 480    
+#define DEPTH_HEIGHT 240      
 #define CHANNEL 3
 using namespace std;
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
@@ -74,7 +72,7 @@ double* GetAngleFromColorIndex(int colorX, int colorY) {
 	double trueAngleX = GetDegreeFromRadian(atan(centeredX * widthStep));
 	double trueAngleY = GetDegreeFromRadian(atan(centeredY * heightStep));
 
-	cout << " for coords (" << colorX << ";" << colorY << ") the degrees are (" << trueAngleX << ";" << trueAngleY << ")" << endl;
+	//cout << " for coords (" << colorX << ";" << colorY << ") the degrees are (" << trueAngleX << ";" << trueAngleY << ")" << endl;
 
 	returnArr[0] = trueAngleX;
 	returnArr[1] = trueAngleY;
@@ -115,14 +113,12 @@ double* Get3DCoordinates(double* angles, int** depthArr) {
 		realWorldCoords[1] = realWorldY;
 		realWorldCoords[2] = realWorldZ;
 
-		std::cout << "3D pos in cm: (" << realWorldX << ";" << realWorldY << ";" << realWorldZ << ")" << std::endl;
-
+		//std::cout << "3D pos in cm: (" << realWorldX << ";" << realWorldY << ";" << realWorldZ << ")" << std::endl;
 	}
 	else {
-		std::cout << "3D pos in cm: ERROR: out of FoV!!! " << std::endl;
-		return realWorldCoords;
+		//std::cout << "3D pos in cm: ERROR: out of FoV!!! " << std::endl;
 	}
-		
+	return realWorldCoords;
 }
 
 bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
@@ -143,7 +139,7 @@ bool has_target_color(double* target_color_max, double* target_color_min, CvScal
 }
 
 void findNeighbors(int x, int y, double* target_color_max, 
-					double* target_color_min, IplImage* color, 
+					double* target_color_min, 
 					std::map<std::pair<int, int>, bool>& stack) {
 	
 	if ((stack.find(std::make_pair(x, y)) == stack.end()) && 
@@ -151,26 +147,26 @@ void findNeighbors(int x, int y, double* target_color_max,
 		stack[(std::make_pair(x, y))] = true;
 		
 		if (x > 0) {
-			findNeighbors(x - 1, y, target_color_max, target_color_min, color, stack);
+			findNeighbors(x - 1, y, target_color_max, target_color_min, stack);
 		}
 		if (y > 0) {
-			findNeighbors(x, y-1, target_color_max, target_color_min, color, stack);
+			findNeighbors(x, y-1, target_color_max, target_color_min, stack);
 		}
 		if (x < color->width) {
-			findNeighbors(x + 1, y, target_color_max, target_color_min, color, stack);
+			findNeighbors(x + 1, y, target_color_max, target_color_min, stack);
 		}
 		if (y < color->height) {
-			findNeighbors(x, y + 1, target_color_max, target_color_min, color, stack);
+			findNeighbors(x, y + 1, target_color_max, target_color_min, stack);
 		}
 	}
 }
 
-void region_growing(int* start, double* target_color_max, double* target_color_min, IplImage* color) {
+void region_growing(int* start, double* target_color_max, double* target_color_min) {
 	std::map<std::pair<int, int>, bool> stack;
 	
 	try
 	{
-		findNeighbors(start[0], start[1], target_color_max, target_color_min, color, stack);
+		findNeighbors(start[0], start[1], target_color_max, target_color_min, stack);
 
 	}
 	catch (const std::exception &e)
@@ -188,7 +184,7 @@ void region_growing(int* start, double* target_color_max, double* target_color_m
 		start[1] = sum_y / stack.size();
 	}
 }
-std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color) {
 	std::vector<int*> cont;
 	int* best_pos = new int[2]{ 0, 0 };
 	long int min_error = 255 * 255 * 255;
@@ -242,7 +238,7 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 	return cont;
 
 }
-int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color, IplImage* color) {
+int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color) {
 
 
 	int* best_pos = new int[2]{ 0, 0 };
@@ -277,14 +273,14 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 		}
 	}
 	
-	region_growing(best_pos, target_color_max, target_color_min, color);
+	region_growing(best_pos, target_color_max, target_color_min);
 
 	return best_pos;
 }
 
 
 
-IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "unknown", double toleranceFactor = generalTolerance) {
+void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleranceFactor = generalTolerance) {
 	
 	double range = toleranceFactor * 255;
 	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
@@ -312,7 +308,7 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	}
 	*/
 	
-	int * a = get_seed_coordinates3(rgb_max, rgb_min, rgb_target, color);
+	int * a = get_seed_coordinates3(rgb_max, rgb_min, rgb_target);
 	cv::Mat output_frame(cv::cvarrToMat(color));
 
 
@@ -327,15 +323,19 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 		textPos.y = target->y + 2;
 	}
 	delete target;
-	delete[] a;
+	
 
 
 	
 
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	std::string outputStr = s.append(" ").append(std::to_string(realcoord[2]));
-	cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
+	std::ostringstream os;
+	os << realcoord[2];
+	std::string str = os.str();
+	std::string outputStr = s.append(" ").append(str);
+	//std::cout << "X: " << realcoord[0] << " Y: " << realcoord[1] << " Z: " << realcoord[2] << std::endl;
+	cvPutText(color, outputStr.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
 
@@ -343,18 +343,15 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	delete rgb_max;
 	delete rgb_min;
 
-	
-
-	return color;
-
+	delete[] a;
 }
 
-IplImage* DrawCircleAtMiddle(IplImage* color) {
+IplImage* DrawCircleAtMiddle() {
 	cvCircle(color, cv::Point(320, 240), 5, cv::Scalar(0, 255, 0));
 	return color;
 }
 
-int drawColor(HANDLE h, IplImage* color) {
+int drawColor(HANDLE h) {
 	
 	const NUI_IMAGE_FRAME * pImageFrame = NULL;
 	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
@@ -391,19 +388,23 @@ int drawColor(HANDLE h, IplImage* color) {
 
 	rgb_target = new int[3]{ 190, 75, 82 };
 
-	color = findColorAndMark(rgb_target, color, "Red");
+	findColorAndMark(rgb_target, "Red");
 	delete[] rgb_target;
 
 
 	//rgb_target = new int[3]{ 68, 115, 112 };
 	rgb_target = new int[3]{ 90, 170, 170 };
-	color = findColorAndMark(rgb_target, color, "Green");
+	findColorAndMark(rgb_target, "Green");
 	delete[] rgb_target;
 	
 
 	//rgb_target = new int[3]{ 70, 120, 70 };
 	rgb_target = new int[3]{ 86, 133, 88 };
-	color = findColorAndMark(rgb_target, color, "Blue");
+	findColorAndMark(rgb_target, "Blue");
+	delete[] rgb_target;
+
+	rgb_target = new int[3]{ 125, 25, 84 };
+	findColorAndMark(rgb_target, "Yellow");
 	delete[] rgb_target;
 	
 	/*****************Find different colors and mark them on image*******************/
@@ -494,16 +495,20 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 }
 
 static void onMouse(int event, int x, int y, int f, void*) {
-	//CvFont font;
-	//cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	//cvPutText(color, "test", CvPoint(100, 100), &font, cv::Scalar(0.0, 0.0, 0.0));	
-	int depthX = x / 2;
-	int depthY = y / 2;
-
-	double depthVal = depthImg[depthX][depthY] / 100.0;
-
 	double* colorAngleArr = GetAngleFromColorIndex(x, y);
 	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
+	
+	std::ostringstream os;
+	os << rdWorldPos[2];
+	std::string str = os.str();
+	std::cout << "Mouse-Event: Depth: " << rdWorldPos[2] << std::endl;
+	cv::Point textPos(0, 0);
+	textPos.x = x;
+	textPos.y = y;
+	CvFont font;
+	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
+	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0));	
+	
 }
 
 int main(int argc, char * argv[]) {
@@ -552,10 +557,10 @@ int main(int argc, char * argv[]) {
 
 	while (1)
 	{
-		WaitForSingleObject(h1, INFINITE);
-		drawColor(h2, color);
 		WaitForSingleObject(h3, INFINITE);
 		depthImg = getDepthImage(h4, depth, 320, 240);
+		WaitForSingleObject(h1, INFINITE);
+		drawColor(h2);
 
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
