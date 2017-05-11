@@ -319,6 +319,8 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
 	
 	cvCircle(color, *target, 1, cv::Scalar(0, 0, 0));
+	double* angle = GetAngleFromColorIndex(a[0], a[1]);
+	double* realcoord = Get3DCoordinates(angle, depthImg);
 	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 	if (textPos.x < target->x &&textPos.y < target->y) {
 		textPos.x = target->x + 2;
@@ -332,7 +334,7 @@ IplImage* findColorAndMark(int* rgb_target, IplImage* color, std::string s = "un
 
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-
+	std::string outputStr = s.append(" ").append(std::to_string(realcoord[2]));
 	cvPutText(color, s.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
@@ -378,7 +380,7 @@ int drawColor(HANDLE h, IplImage* color) {
 		cg = uint8_t(color_pxl.val[1]),
 		cb = uint8_t(color_pxl.val[2]),
 		c4 = uint8_t(color_pxl.val[3]);
-	//std::cout << "G: "<< (int)rgb << " B: " <<(int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
+	std::cout << "G: "<< (int)rgb << " B: " <<(int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
 
 	/*****************Find different colors and mark them on image*******************/
 	//Color-Format = RBG
@@ -394,7 +396,7 @@ int drawColor(HANDLE h, IplImage* color) {
 
 
 	//rgb_target = new int[3]{ 68, 115, 112 };
-	rgb_target = new int[3]{ 21, 83, 90 };
+	rgb_target = new int[3]{ 90, 170, 170 };
 	color = findColorAndMark(rgb_target, color, "Green");
 	delete[] rgb_target;
 	
