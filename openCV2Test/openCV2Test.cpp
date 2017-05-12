@@ -40,6 +40,9 @@ const float fovColorX = 62;
 const float fovColorY = 48.6;
 const double generalTolerance = 0.05;
 
+int clickedX = 1;
+int clickedY = 1;
+
 IplImage* color;
 IplImage* depth;
 int** depthImg;
@@ -371,14 +374,14 @@ int drawColor(HANDLE h) {
 	
 	}
 
-	CvScalar color_pxl = cvGet2D(color, 240, 320);
+	/*CvScalar color_pxl = cvGet2D(color, 240, 320);
 	
 	uint8_t rgb = uint8_t(color_pxl.val[0]),
 		cg = uint8_t(color_pxl.val[1]),
 		cb = uint8_t(color_pxl.val[2]),
 		c4 = uint8_t(color_pxl.val[3]);
 	std::cout << "G: "<< (int)rgb << " B: " <<(int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
-
+	*/
 	/*****************Find different colors and mark them on image*******************/
 	//Color-Format = RBG
 	int* rgb_target;
@@ -501,6 +504,42 @@ static void onMouse(int event, int x, int y, int f, void*) {
 	
 }
 
+
+
+static void writeDepthandColor() {
+	double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
+	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
+
+	CvScalar color_pxl = cvGet2D(color, clickedY, clickedX);
+
+	uint8_t rgb = uint8_t(color_pxl.val[0]),
+		cg = uint8_t(color_pxl.val[1]),
+		cb = uint8_t(color_pxl.val[2]),
+		c4 = uint8_t(color_pxl.val[3]);
+	//std::cout << "G: " << (int)rgb << " B: " << (int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
+
+	std::ostringstream os;
+	os << rdWorldPos[2];
+	std::string str = os.str();
+	std::cout << "Coordinates: X: " << rdWorldPos[0] << " Y: " << rdWorldPos[1]<< " Z: " << rdWorldPos[2] 
+			  << "\tColor: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << " Alpha: " << (int)c4 << std::endl;
+	cv::Point textPos(0, 0);
+	textPos.x = clickedX+3;
+	textPos.y = clickedY+3;
+	CvFont font;
+	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
+	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0)); 
+}
+
+static void onClick(int event, int x, int y, int f, void*) {
+	if(event == CV_EVENT_LBUTTONDOWN){
+		
+
+		clickedX = x;
+		clickedY = y;
+	}
+}
+
 int main(int argc, char * argv[]) {
 	
 
@@ -512,7 +551,9 @@ int main(int argc, char * argv[]) {
 
 	cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
 
-	cv::setMouseCallback("color image", onMouse);
+	//cv::setMouseCallback("color image", onMouse);
+
+	cv::setMouseCallback("color image", onClick);
 
 	HRESULT hr = NuiInitialize(
 		NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX
@@ -551,7 +592,7 @@ int main(int argc, char * argv[]) {
 		depthImg = getDepthImage(h4, depth, 320, 240);
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2);
-
+		writeDepthandColor();
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
