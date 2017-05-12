@@ -436,8 +436,6 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 
 	int minVal = 100000;
 	int maxVal = -10000;
-	double sum = 0.0;
-	int count = 0;
 
 	const int MIN_DIST = 800;
 	const int MAX_DIST = 3000;
@@ -453,26 +451,20 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 			unsigned short pixelVal = pBuff[index] >> 3;
 			int grayVal = (pixelVal - MIN_DIST) / scale + 1;
 
-			if (pixelVal <= MIN_DIST) {
+			if (pixelVal <= MIN_DIST) 
 				grayVal = 0;
-			}
-			else if (pixelVal >=  MAX_DIST) {
+			else if (pixelVal >=  MAX_DIST)
 				grayVal = 255;
-			}
 
 			buf[channelCount * index] = buf[channelCount * index + 1] = buf[channelCount * index + 2] = grayVal;
 
 
 			if (pixelVal > MIN_DIST && pixelVal < MAX_DIST) {
 				returnArray[x][y] = pixelVal;
-				sum += pixelVal;
-				if (pixelVal < minVal) {
+				if (pixelVal < minVal)
 					minVal = pixelVal;
-				}
-				if (pixelVal > maxVal) {
+				if (pixelVal > maxVal)
 					maxVal = pixelVal;
-				}
-				count++;
 			}
 			else if (pixelVal >= MAX_DIST) {
 				returnArray[x][y] = MAX_DIST;
@@ -484,12 +476,10 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	}
 
 	cvSetData(depth, buf, width * CHANNEL);
-	NuiImageStreamReleaseFrame(h, pImageFrame);
 	cvShowImage("depth image", depth);
+	NuiImageStreamReleaseFrame(h, pImageFrame);
 
 	depthLockedRect = LockedRect;
-
-	sum /= (count);
 
 	return returnArray;
 }
