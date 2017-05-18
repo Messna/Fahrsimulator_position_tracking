@@ -1,5 +1,3 @@
-// openCV2Test.cpp : Definiert den Einstiegspunkt für die Konsolenanwendung.
-//
 #include <vector>
 #include <map>
 #include <utility>
@@ -20,11 +18,7 @@
 #include "opencv2\world.hpp"
 #include "opencv2\highgui.hpp"
 #include "opencv2\core\cvstd.hpp"
-/*#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/core/core.hpp>
-#include<opencv2/objdetect/objdetect.hpp>
-*/
+
 #define COLOR_WIDTH 640    
 #define COLOR_HEIGHT 480    
 #define DEPTH_WIDTH 320    
@@ -42,6 +36,9 @@ const double generalTolerance = 0.05;
 
 int clickedX = 1;
 int clickedY = 1;
+double* clickedPoint1 = nullptr;
+double* clickedPoint2 = nullptr;
+bool point1 = false;
 
 IplImage* color;
 IplImage* depth;
@@ -84,7 +81,7 @@ double* GetAngleFromColorIndex(int colorX, int colorY) {
 
 double* Get3DCoordinates(double* angles, int** depthArr) {
 
-	double* realWorldCoords = new double[3] {-1000, -1000, -1000};
+	double* realWorldCoords = new double[5] {-1000, -1000, -1000, 1, 1};
 
 	double colorAngleX = angles[0];
 	double colorAngleY = angles[1];
@@ -122,6 +119,13 @@ double* Get3DCoordinates(double* angles, int** depthArr) {
 		//std::cout << "3D pos in cm: ERROR: out of FoV!!! " << std::endl;
 	}
 	return realWorldCoords;
+}
+
+double GetLength(double* p1, double* p2) {
+	double l1 = (p2[0] - p1[0]) * (p2[0] - p1[0]);
+	double l2 = (p2[1] - p1[1]) * (p2[1] - p1[1]);
+	double l3 = (p2[2] - p1[2]) * (p2[2] - p1[2]);
+	return sqrt(l1 + l2 + l3);
 }
 
 bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
@@ -526,17 +530,44 @@ static void writeDepthandColor() {
 	cv::Point textPos(0, 0);
 	textPos.x = clickedX+3;
 	textPos.y = clickedY+3;
-	CvFont font;
+
+	if (clickedPoint1 != nullptr && clickedPoint2 != nullptr) {
+		cv::Point2d d2P1 = cv::Point2d(clickedPoint1[3], clickedPoint1[4]);
+		cv::Point2d d2P2 = cv::Point2d(clickedPoint2[3], clickedPoint2[4]);
+		double length = GetLength(clickedPoint1, clickedPoint2);
+		cvLine(color, d2P1, d2P2, cv::Scalar(0.0, 0.0, 0.0), 2);
+		CvFont font;
+		cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
+		cvPutText(color, to_string(int(length)).c_str(), d2P2, &font, cv::Scalar(0.0, 0.0, 0.0));
+	//	std::cout << "Draw Line " << length << "at P1: " << clickedPoint1[0] << "/" << clickedPoint1[1] << " P1: " << clickedPoint2[0] << "/" << clickedPoint2[1] << std::endl;
+	}
+
+/*	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0)); 
+	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0)); */
 }
 
 static void onClick(int event, int x, int y, int f, void*) {
 	if(event == CV_EVENT_LBUTTONDOWN){
-		
-
 		clickedX = x;
 		clickedY = y;
+		if (clickedPoint1 != nullptr && clickedPoint2 != nullptr) {
+			clickedPoint1 = nullptr;
+			clickedPoint2 = nullptr;
+		}
+
+		if (clickedPoint1 == nullptr) {
+			double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
+			clickedPoint1 = Get3DCoordinates(colorAngleArr, depthImg);
+			clickedPoint1[3] = x;
+			clickedPoint1[4] = y;
+		}
+		else if (clickedPoint2 == nullptr) {
+			double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
+			clickedPoint2 = Get3DCoordinates(colorAngleArr, depthImg);
+			clickedPoint2[3] = x;
+			clickedPoint2[4] = y;
+		}
 	}
 }
 
