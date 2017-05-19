@@ -45,7 +45,7 @@ vector<std::pair<string, double *>> pointVec;
 
 IplImage* color;
 IplImage* depth;
-int** depthImg;
+int** depthImg = nullptr;
 NUI_LOCKED_RECT depthLockedRect;
 
 #define PI 3.14159265358979323846
@@ -133,7 +133,8 @@ double GetLength(double* p1, double* p2) {
 
 bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
 	
-	uint8_t green = uint8_t(color_pxl.val[0]),
+	uint8_t green = 0, blue = 0, red = 0, c4 = 0;
+	green = uint8_t(color_pxl.val[0]),
 		blue = uint8_t(color_pxl.val[1]),
 		red = uint8_t(color_pxl.val[2]),
 		c4 = uint8_t(color_pxl.val[3]);
@@ -152,14 +153,15 @@ void findNeighbors(int x, int y, double* target_color_max,
 					double* target_color_min, 
 					std::map<std::pair<int, int>, bool>& stack) {
 	
+	// TODO FIND ERROR
 	if ((stack.find(std::make_pair(x, y)) == stack.end()) && 
-			has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x/1.333))) {
+			has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x/1.33335))) {
 		stack[(std::make_pair(x, y))] = true;
 		
-		if (x > 0) {
+		if (x > 1) {
 			findNeighbors(x - 1, y, target_color_max, target_color_min, stack);
 		}
-		if (y > 0) {
+		if (y > 1) {
 			findNeighbors(x, y-1, target_color_max, target_color_min, stack);
 		}
 		if (x < color->width - 1) {
@@ -185,7 +187,7 @@ void region_growing(int* start, double* target_color_max, double* target_color_m
 	}
 	long int sum_x = 0;
 	long int sum_y = 0;
-	if (stack.size() != 0) {
+	if (!stack.empty()) {
 		for (auto a : stack) {
 			sum_x += a.first.first;
 			sum_y += a.first.second;
@@ -251,7 +253,7 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color) {
 
 
-	int* best_pos = new int[2]{ 0, 0 };
+	int* best_pos = new int[2]{ 1, 1 };
 	long int min_error = 255 * 255 * 255;
 	int i= 0;
 	double red_sum = 0.0;
@@ -296,7 +298,6 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
 	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
 	cv::Point textPos(0, 0);
-
 	
 /*	
 	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
@@ -383,6 +384,7 @@ int drawColor(HANDLE h) {
 
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.3, 0.3); 
+	
 	if (!pointVec.empty()) {
 		for (std::pair<string, double*> e : pointVec) {
 			cvCircle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
@@ -409,7 +411,6 @@ int drawColor(HANDLE h) {
 	//rgb_target = new int[3]{ 140, 38, 31 };
 
 	rgb_target = new int[3]{ 190, 75, 82 };
-
 	findColorAndMark(rgb_target, "Red");
 	delete[] rgb_target;
 
@@ -621,9 +622,16 @@ int main(int argc, char * argv[]) {
 	while (1)
 	{
 		WaitForSingleObject(h3, INFINITE);
+
+		if (depthImg != nullptr) {
+			for_each(depthImg, depthImg + DEPTH_WIDTH, [](int* row) { delete[] row; });
+			delete[] depthImg;
+		}
+			
 		depthImg = getDepthImage(h4, depth, 320, 240);
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2);
+
 		//writeDepthandColor();
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
