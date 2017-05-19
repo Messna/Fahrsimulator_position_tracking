@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 
+#include <string>
 #include <Windows.h>
 #include <iostream>
 
@@ -40,7 +41,7 @@ int clickedX = 1;
 int clickedY = 1;
 double* clickedPoint1 = nullptr;
 double* clickedPoint2 = nullptr;
-bool point1 = false;
+vector<std::pair<string, double *>> pointVec;
 
 IplImage* color;
 IplImage* depth;
@@ -161,10 +162,10 @@ void findNeighbors(int x, int y, double* target_color_max,
 		if (y > 0) {
 			findNeighbors(x, y-1, target_color_max, target_color_min, stack);
 		}
-		if (x < color->width) {
+		if (x < color->width - 1) {
 			findNeighbors(x + 1, y, target_color_max, target_color_min, stack);
 		}
-		if (y < color->height) {
+		if (y < color->height - 1) {
 			findNeighbors(x, y + 1, target_color_max, target_color_min, stack);
 		}
 	}
@@ -380,6 +381,18 @@ int drawColor(HANDLE h) {
 	
 	}
 
+	CvFont font;
+	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.3, 0.3); 
+	if (!pointVec.empty()) {
+		for (std::pair<string, double*> e : pointVec) {
+			cvCircle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
+			
+			stringstream text;
+			text << setprecision(3) << e.first << " X:" << e.second[0] << " Y:" << e.second[1] << " Z:" << e.second[2];
+			cvPutText(color, text.str().c_str(), cv::Point2d(e.second[3] + 4, e.second[4] - 4), &font, cv::Scalar(0.0, 0.0, 0.0));
+		}
+	}
+
 	/*CvScalar color_pxl = cvGet2D(color, 240, 320);
 	
 	uint8_t rgb = uint8_t(color_pxl.val[0]),
@@ -547,26 +560,15 @@ static void writeDepthandColor() {
 }
 
 static void onClick(int event, int x, int y, int f, void*) {
-	if(event == CV_EVENT_LBUTTONDOWN){
-		clickedX = x;
-		clickedY = y;
-		if (clickedPoint1 != nullptr && clickedPoint2 != nullptr) {
-			clickedPoint1 = nullptr;
-			clickedPoint2 = nullptr;
-		}
-
-		if (clickedPoint1 == nullptr) {
-			double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
-			clickedPoint1 = Get3DCoordinates(colorAngleArr, depthImg);
-			clickedPoint1[3] = x;
-			clickedPoint1[4] = y;
-		}
-		else if (clickedPoint2 == nullptr) {
-			double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
-			clickedPoint2 = Get3DCoordinates(colorAngleArr, depthImg);
-			clickedPoint2[3] = x;
-			clickedPoint2[4] = y;
-		}
+	if (event == CV_EVENT_LBUTTONDOWN) {
+		double* colorAngleArr = GetAngleFromColorIndex(x, y);
+		double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
+		rdWorldPos[3] = x;
+		rdWorldPos[4] = y;
+		stringstream tmp;
+		tmp << "P" << pointVec.size() + 1;
+		//string num = "P".append(to_string(pointVec.size() + 1));
+		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
 	}
 }
 
@@ -622,7 +624,7 @@ int main(int argc, char * argv[]) {
 		depthImg = getDepthImage(h4, depth, 320, 240);
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2);
-		writeDepthandColor();
+		//writeDepthandColor();
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
