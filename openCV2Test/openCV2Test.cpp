@@ -19,12 +19,14 @@
 #include "opencv2\highgui.hpp"
 #include "opencv2\core\cvstd.hpp"
 
+using namespace std;
+
 #define COLOR_WIDTH 640    
 #define COLOR_HEIGHT 480    
 #define DEPTH_WIDTH 320    
 #define DEPTH_HEIGHT 240      
 #define CHANNEL 3
-using namespace std;
+
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 
 const float a = 0.00173667;
@@ -465,7 +467,6 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 
 			buf[channelCount * index] = buf[channelCount * index + 1] = buf[channelCount * index + 2] = grayVal;
 
-
 			if (pixelVal > MIN_DIST && pixelVal < MAX_DIST) {
 				returnArray[x][y] = pixelVal;
 				if (pixelVal < minVal)
@@ -507,8 +508,6 @@ static void onMouse(int event, int x, int y, int f, void*) {
 	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0));	
 	
 }
-
-
 
 static void writeDepthandColor() {
 	double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
