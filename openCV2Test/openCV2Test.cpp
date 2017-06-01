@@ -42,6 +42,7 @@ int clickedY = 1;
 double* clickedPoint1 = nullptr;
 double* clickedPoint2 = nullptr;
 vector<std::pair<string, double *>> pointVec;
+vector<std::pair<string, int *>> colorVec;
 
 IplImage* color;
 IplImage* depth;
@@ -409,25 +410,10 @@ int drawColor(HANDLE h) {
 
 	IplImage* tmp_color = nullptr;
 
-	/*
-	rgb_target = new int[3]{ 167, 75, 82 };
-	findColorAndMark(rgb_target, "Red");
-	delete[] rgb_target;
-
-
-	rgb_target = new int[3]{ 70, 121, 120 };
-	findColorAndMark(rgb_target, "Green");
-	delete[] rgb_target;
-	
-
-	//rgb_target = new int[3]{ 70, 120, 70 };
-	rgb_target = new int[3]{ 86, 133, 88 };
-	findColorAndMark(rgb_target, "Blue");
-	delete[] rgb_target;
-
-	rgb_target = new int[3]{ 181, 120, 183 };
-	findColorAndMark(rgb_target, "Yellow");
-	delete[] rgb_target;*/
+	for each (pair<string, int*> p in colorVec)
+	{
+		findColorAndMark(p.second, p.first);
+	}
 	
 	/*****************Find different colors and mark them on image*******************/
 	
@@ -589,7 +575,21 @@ static void onClick(int event, int x, int y, int f, void*) {
 	}
 }
 
+static void onKey()
+
 int main(int argc, char * argv[]) {
+
+	pair<string, int*> p = make_pair("P1", new int[3]{ 167, 75, 82 });
+	colorVec.push_back(p);
+
+	p = make_pair("P2", new int[3]{ 70, 121, 120 });
+	colorVec.push_back(p);
+
+	p = make_pair("P3", new int[3]{ 86, 133, 88 });
+	colorVec.push_back(p);
+
+	p = make_pair("P4", new int[3]{ 181, 120, 183 });
+	colorVec.push_back(p);
 	
 
 	color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HEIGHT), IPL_DEPTH_8U, 4);
