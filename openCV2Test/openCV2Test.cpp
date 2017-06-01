@@ -408,15 +408,14 @@ int drawColor(HANDLE h) {
 	int* rgb_target;
 
 	IplImage* tmp_color = nullptr;
-	//rgb_target = new int[3]{ 140, 38, 31 };
 
-	rgb_target = new int[3]{ 190, 75, 82 };
+	/*
+	rgb_target = new int[3]{ 167, 75, 82 };
 	findColorAndMark(rgb_target, "Red");
 	delete[] rgb_target;
 
 
-	//rgb_target = new int[3]{ 68, 115, 112 };
-	rgb_target = new int[3]{ 90, 170, 170 };
+	rgb_target = new int[3]{ 70, 121, 120 };
 	findColorAndMark(rgb_target, "Green");
 	delete[] rgb_target;
 	
@@ -426,13 +425,17 @@ int drawColor(HANDLE h) {
 	findColorAndMark(rgb_target, "Blue");
 	delete[] rgb_target;
 
-	rgb_target = new int[3]{ 125, 25, 84 };
+	rgb_target = new int[3]{ 181, 120, 183 };
 	findColorAndMark(rgb_target, "Yellow");
-	delete[] rgb_target;
+	delete[] rgb_target;*/
 	
 	/*****************Find different colors and mark them on image*******************/
 	
 	cvShowImage("color image", color);
+	//cv::Mat image_out;
+	//cv::Mat m = cv::cvarrToMat(color);
+	//cvtColor(m, image_out, CV_RGB2XYZ);
+	//imshow("sohi", image_out);
 	
 	NuiImageStreamReleaseFrame(h, pImageFrame);
 	return 0;
@@ -562,6 +565,15 @@ static void writeDepthandColor() {
 
 static void onClick(int event, int x, int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
+		CvScalar color_pxl = cvGet2D(color, y, x);
+
+		uint8_t rgb = uint8_t(color_pxl.val[0]),
+			cg = uint8_t(color_pxl.val[1]),
+			cb = uint8_t(color_pxl.val[2]),
+			c4 = uint8_t(color_pxl.val[3]);
+
+		std::cout << "Color: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << " Alpha: " << (int)c4 << std::endl;
+
 		double* colorAngleArr = GetAngleFromColorIndex(x, y);
 		double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
 		rdWorldPos[3] = x;
@@ -570,6 +582,10 @@ static void onClick(int event, int x, int y, int f, void*) {
 		tmp << "P" << pointVec.size() + 1;
 		//string num = "P".append(to_string(pointVec.size() + 1));
 		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
+	}
+	else if (event == CV_EVENT_RBUTTONDOWN) {
+		if (!pointVec.empty())
+			pointVec.pop_back();
 	}
 }
 
@@ -632,7 +648,7 @@ int main(int argc, char * argv[]) {
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2);
 
-		//writeDepthandColor();
+		
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
