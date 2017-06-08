@@ -72,10 +72,10 @@ int drawColor(HANDLE h) {
 
 	IplImage* tmp_color = nullptr;
 
-	for each (pair<string, int*> p in colorVec)
-	{
+	for (auto const& p : colorMap) {
 		findColorAndMark(p.second, p.first);
 	}
+
 	
 	cvShowImage("color image", color);
 	
@@ -214,24 +214,18 @@ static void onClick(int event, int x, int y, int f, void*) {
 	}
 }
 
-static void editPoint() {
+static void editColorValuesOfPoints() {
 
 }
 
 int main(int argc, char * argv[]) {
+	colorMap["P1"] = new int[3]{ 167, 75, 82 };
 
-	pair<string, int*> p = make_pair("P1", new int[3]{ 167, 75, 82 });
-	colorVec.push_back(p);
+	colorMap["P2"] = new int[3]{ 70, 121, 120 };
 
-	p = make_pair("P2", new int[3]{ 70, 121, 120 });
-	colorVec.push_back(p);
+	colorMap["P3"] = new int[3]{ 86, 133, 88 };
 
-	p = make_pair("P3", new int[3]{ 86, 133, 88 });
-	colorVec.push_back(p);
-
-	p = make_pair("P4", new int[3]{ 181, 120, 183 });
-	colorVec.push_back(p);
-	
+	colorMap["P4"] = new int[3]{ 181, 120, 183 };
 
 	color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HEIGHT), IPL_DEPTH_8U, 4);
 
@@ -291,7 +285,7 @@ int main(int argc, char * argv[]) {
 		int c = cvWaitKey(1);
 
 		if (c == 'c' || c == 'C')
-
+			editColorValuesOfPoints();
 
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
