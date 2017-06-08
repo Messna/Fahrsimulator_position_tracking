@@ -214,8 +214,8 @@ static void onClick(int event, int x, int y, int f, void*) {
 	}
 }
 
-static void onKey(int event, int x, int y, int f, void*) {
-	// TODO Add edit mode
+static void editPoint() {
+
 }
 
 int main(int argc, char * argv[]) {
@@ -289,6 +289,10 @@ int main(int argc, char * argv[]) {
 
 		
 		int c = cvWaitKey(1);
+
+		if (c == 'c' || c == 'C')
+
+
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
 	}
