@@ -206,7 +206,11 @@ static void onClick(int event, int x, int y, int f, void*) {
 		tmp << "P" << pointVec.size() + 1;
 		//string num = "P".append(to_string(pointVec.size() + 1));
 		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
-		colorMap["C" + to_string(colorMap.size())] = new int[3]{ cb, rgb, cg };
+
+		int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
+		int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
+
+		colorMap["C" + to_string(colorMap.size())] = new int[5]{ cb, rgb, cg, rec_x, rec_y };
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		if (!pointVec.empty())

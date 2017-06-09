@@ -133,9 +133,8 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 	double blue_sum = 0.0;
 	double green_sum = 0.0;
 
-
-	for (int x = 0; x < color->width; x++) {
-		for (int y = 0; y < color->height; y++) {
+	for (int x = target_color[3]; x < target_color[3]+50; x++) {
+		for (int y = target_color[4]; y < target_color[4]+50; y++) {
 			CvScalar color_pxl = cvGet2D(color, y, x);
 			uint8_t green = uint8_t(color_pxl.val[0]),
 				blue = uint8_t(color_pxl.val[1]),
@@ -206,12 +205,17 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 		textPos.x = target->x + 2;
 		textPos.y = target->y + 2;
 	}
-	delete target;
+	
 
 
 
 
+	cvRectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 
+	if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) {
+		rgb_target[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
+		rgb_target[4] = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
+	}
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
 	std::ostringstream os;
@@ -226,6 +230,6 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	cvCircle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
 	delete rgb_max;
 	delete rgb_min;
-
+	delete target;
 	delete[] a;
 }
