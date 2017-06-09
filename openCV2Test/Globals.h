@@ -29,7 +29,6 @@ double* clickedPoint1 = nullptr;
 double* clickedPoint2 = nullptr;
 vector<std::pair<string, double *>> pointVec;
 map<string, int *> colorMap;
-vector<std::pair<string, int *>> colorVec;
 
 IplImage* color;
 IplImage* depth;

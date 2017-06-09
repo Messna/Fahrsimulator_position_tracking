@@ -75,7 +75,6 @@ int drawColor(HANDLE h) {
 	for (auto const& p : colorMap) {
 		findColorAndMark(p.second, p.first);
 	}
-
 	
 	cvShowImage("color image", color);
 	
@@ -192,12 +191,12 @@ static void onClick(int event, int x, int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
 		CvScalar color_pxl = cvGet2D(color, y, x);
 
-		uint8_t rgb = uint8_t(color_pxl.val[0]),
-			cg = uint8_t(color_pxl.val[1]),
-			cb = uint8_t(color_pxl.val[2]),
-			c4 = uint8_t(color_pxl.val[3]);
+		uint8_t rgb = uint8_t(color_pxl.val[0]), // B
+			cg = uint8_t(color_pxl.val[1]), // G
+			cb = uint8_t(color_pxl.val[2]); // R
+		//	c4 = uint8_t(color_pxl.val[3]); // Alpha
 
-		std::cout << "Color: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << " Alpha: " << (int)c4 << std::endl;
+		std::cout << "Color: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << std::endl;
 
 		double* colorAngleArr = GetAngleFromColorIndex(x, y);
 		double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
@@ -207,6 +206,7 @@ static void onClick(int event, int x, int y, int f, void*) {
 		tmp << "P" << pointVec.size() + 1;
 		//string num = "P".append(to_string(pointVec.size() + 1));
 		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
+		colorMap["C" + to_string(colorMap.size())] = new int[3]{ cb, rgb, cg };
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		if (!pointVec.empty())
@@ -214,18 +214,19 @@ static void onClick(int event, int x, int y, int f, void*) {
 	}
 }
 
-static void editColorValuesOfPoints() {
-
+static void editColorValuesOfPoints(int point) {
+	
 }
 
 int main(int argc, char * argv[]) {
-	colorMap["P1"] = new int[3]{ 167, 75, 82 };
+	// Red
+	//colorMap["C1"] = new int[3]{ 182, 50, 40 };
 
-	colorMap["P2"] = new int[3]{ 70, 121, 120 };
+	//colorMap["C2"] = new int[3]{ 70, 121, 120 };
 
-	colorMap["P3"] = new int[3]{ 86, 133, 88 };
+	//colorMap["C3"] = new int[3]{ 86, 133, 88 };
 
-	colorMap["P4"] = new int[3]{ 181, 120, 183 };
+	//colorMap["C4"] = new int[3]{ 181, 120, 183 };
 
 	color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HEIGHT), IPL_DEPTH_8U, 4);
 
@@ -285,7 +286,7 @@ int main(int argc, char * argv[]) {
 		int c = cvWaitKey(1);
 
 		if (c == 'c' || c == 'C')
-			editColorValuesOfPoints();
+			editColorValuesOfPoints(1);
 
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
