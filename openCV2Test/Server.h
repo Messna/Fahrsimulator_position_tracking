@@ -1,25 +1,27 @@
-#pragma once
-
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #ifndef UNICODE
 #define UNICODE
 #endif
 
-
+#include <winsock2.h>
+#include <windows.h>
+#include <string>
+#include <iostream>
+#include <thread>
+#include <vector>
 
 // Need to link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
 #define REVBUFFLEN 8142
 
-int inline startServer()
-{
+int startServer() {
 	// Initialize Winsock.
-	run = true;
+	bool run = true;
 
 	char recvBuffer[REVBUFFLEN];
-	std::vector<std::string> points = { "P1:127.531/48.848/17.8\n"
-		, "P2:83.939/392.19/3.123\n"
-		, "P3:91.930/201.83/91.872\n" };
+	std::vector<std::string> points = { "P1:127.531/48.848/17.8"
+		, "P2:83.939/392.19/3.123"
+		, "P3:91.930/201.83/91.872" };
 	WSADATA wsaData;
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR)
@@ -27,7 +29,11 @@ int inline startServer()
 		wprintf(L"WSAStartup failed with error: %ld\n", iResult);
 		return 1;
 	}
-	SOCKET ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	//----------------------
+	// Create a SOCKET for listening for
+	// incoming connection requests.
+	SOCKET ListenSocket;
+	ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (ListenSocket == INVALID_SOCKET)
 	{
 		wprintf(L"socket failed with error: %ld\n", WSAGetLastError());
@@ -40,10 +46,10 @@ int inline startServer()
 	sockaddr_in service;
 	service.sin_family = AF_INET;
 	service.sin_addr.s_addr = inet_addr("127.0.0.1");
-	InetPton(AF_INET, (PCWSTR) "127.0.0.1", &(service.sin_addr));
 	service.sin_port = htons(27015);
-	iResult = bind(ListenSocket, (sockaddr *)& service, sizeof service);
-	if (iResult == SOCKET_ERROR)
+
+	if (::bind(ListenSocket,
+		(SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
 	{
 		wprintf(L"bind failed with error: %ld\n", WSAGetLastError());
 		closesocket(ListenSocket);
