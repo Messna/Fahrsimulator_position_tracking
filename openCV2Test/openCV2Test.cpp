@@ -1,14 +1,19 @@
+#include "stdafx.h"
+
+#include <winsock2.h>
+#include <WS2tcpip.h>
+#include <windows.h>
+#include <thread>
+
 #include <vector>
 #include <map>
 #include <utility>
 
-#include "stdafx.h"
 #include "Globals.h"
 #include "DepthLib.h"
 #include "ColorDetection.h"
 
 #include <string>
-#include <Windows.h>
 #include <iostream>
 
 #include <math.h>
@@ -16,12 +21,12 @@
 #include "NuiApi.h"
 #include "NuiImageCamera.h"
 #include "NuiSensor.h"
-#include "NuiSkeleton.h"
 
 #include "opencv2\opencv.hpp"
 #include "opencv2\world.hpp"
 #include "opencv2\highgui.hpp"
 #include "opencv2\core\cvstd.hpp"
+#include "Server.h"
 
 using namespace std;
 
@@ -273,7 +278,10 @@ int main(int argc, char * argv[]) {
 		return hr;
 	}
 
-	while (1)
+	thread serverThread(&startServer);
+	cout << "Main thread" << endl;
+
+	while (true)
 	{
 		WaitForSingleObject(h3, INFINITE);
 
@@ -285,7 +293,6 @@ int main(int argc, char * argv[]) {
 		depthImg = getDepthImage(h4, depth, 320, 240);
 		WaitForSingleObject(h1, INFINITE);
 		drawColor(h2);
-
 		
 		int c = cvWaitKey(1);
 
@@ -295,6 +302,9 @@ int main(int argc, char * argv[]) {
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
 	}
+
+	run = false;
+	serverThread.join();
 
 	cvReleaseImageHeader(&depth);
 	cvReleaseImageHeader(&color);
