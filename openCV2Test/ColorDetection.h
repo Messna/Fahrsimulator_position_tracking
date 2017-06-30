@@ -27,9 +27,9 @@ void findNeighbors(int x, int y, double* target_color_max,
 	std::map<std::pair<int, int>, bool>& stack) {
 
 	// TODO FIND ERROR
-	if ((stack.find(std::make_pair(x, y)) == stack.end()) &&
+	if ((stack.find(std::make_pair(x, y)) != stack.end()) &&
 		has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x / 1.33335))) {
-		stack[(std::make_pair(x, y))] = true;
+		stack[make_pair(x, y)] = true;
 
 		if (x > 1) {
 			findNeighbors(x - 1, y, target_color_max, target_color_min, stack);
