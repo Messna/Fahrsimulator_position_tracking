@@ -114,7 +114,6 @@ int startServer() {
 	// No longer need server socket
 	closesocket(ListenSocket);
 	cout << "Connection closed" << endl;
-	cin;
 	WSACleanup();
 	return 0;
 }

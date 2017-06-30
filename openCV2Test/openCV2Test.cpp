@@ -39,8 +39,7 @@ IplImage* DrawCircleAtMiddle() {
 }
 
 int drawColor(HANDLE h) {
-	
-	const NUI_IMAGE_FRAME * pImageFrame = NULL;
+	const NUI_IMAGE_FRAME * pImageFrame = nullptr;
 	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
 	if (FAILED(hr))
 	{
@@ -50,7 +49,7 @@ int drawColor(HANDLE h) {
 	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
 
 	NUI_LOCKED_RECT LockedRect;
-	pTexture->LockRect(0, &LockedRect, NULL, 0);
+	pTexture->LockRect(0, &LockedRect, nullptr, 0);
 	if (LockedRect.Pitch != 0)
 	{
 		BYTE * pBuffer = (BYTE*)LockedRect.pBits;
@@ -73,10 +72,6 @@ int drawColor(HANDLE h) {
 
 	/*****************Find different colors and mark them on image*******************/
 	//Color-Format = RBG
-	int* rgb_target;
-
-	IplImage* tmp_color = nullptr;
-
 	for (auto const& p : colorMap) {
 		findColorAndMark(p.second, p.first);
 	}
@@ -89,7 +84,7 @@ int drawColor(HANDLE h) {
 
 int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 
-	const NUI_IMAGE_FRAME * pImageFrame = NULL;
+	const NUI_IMAGE_FRAME * pImageFrame = nullptr;
 	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
 
 	int** returnArray = new int*[width];
@@ -99,7 +94,7 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 
 	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
 	NUI_LOCKED_RECT LockedRect;
-	pTexture->LockRect(0, &LockedRect, NULL, 0);
+	pTexture->LockRect(0, &LockedRect, nullptr, 0);
 	if (LockedRect.Pitch == 0)
 	{
 		return returnArray;
@@ -155,42 +150,6 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	return returnArray;
 }
 
-static void writeDepthandColor() {
-	double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
-	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
-
-	CvScalar color_pxl = cvGet2D(color, clickedY, clickedX);
-
-	uint8_t rgb = uint8_t(color_pxl.val[0]),
-		cg = uint8_t(color_pxl.val[1]),
-		cb = uint8_t(color_pxl.val[2]),
-		c4 = uint8_t(color_pxl.val[3]);
-	//std::cout << "G: " << (int)rgb << " B: " << (int)cg << " R: " << (int)cb << " " << (int)c4 << std::endl;
-
-	std::ostringstream os;
-	os << rdWorldPos[2];
-	std::string str = os.str();
-	std::cout << "Coordinates: X: " << rdWorldPos[0] << " Y: " << rdWorldPos[1]<< " Z: " << rdWorldPos[2] 
-			  << "\tColor: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << " Alpha: " << (int)c4 << std::endl;
-	cv::Point textPos(0, 0);
-	textPos.x = clickedX+3;
-	textPos.y = clickedY+3;
-
-	if (clickedPoint1 != nullptr && clickedPoint2 != nullptr) {
-		cv::Point2d d2P1 = cv::Point2d(clickedPoint1[3], clickedPoint1[4]);
-		cv::Point2d d2P2 = cv::Point2d(clickedPoint2[3], clickedPoint2[4]);
-		double length = GetLength(clickedPoint1, clickedPoint2);
-		cvLine(color, d2P1, d2P2, cv::Scalar(0.0, 0.0, 0.0), 2);
-		CvFont font;
-		cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-		cvPutText(color, to_string(int(length)).c_str(), d2P2, &font, cv::Scalar(0.0, 0.0, 0.0));
-	//	std::cout << "Draw Line " << length << "at P1: " << clickedPoint1[0] << "/" << clickedPoint1[1] << " P1: " << clickedPoint2[0] << "/" << clickedPoint2[1] << std::endl;
-	}
-
-/*	CvFont font;
-	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0)); */
-}
 
 static void onClick(int event, int x, int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
@@ -227,10 +186,6 @@ static void onClick(int event, int x, int y, int f, void*) {
 			pointVec.pop_back();
 		}
 	}
-}
-
-static void editColorValuesOfPoints(int point) {
-	
 }
 
 int main(int argc, char * argv[]) {
@@ -301,9 +256,6 @@ int main(int argc, char * argv[]) {
 		drawColor(h2);
 		
 		int c = cvWaitKey(1);
-
-		if (c == 'c' || c == 'C')
-			editColorValuesOfPoints(1);
 
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
