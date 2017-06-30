@@ -1,4 +1,5 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -13,6 +14,7 @@
 // Need to link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
 #define REVBUFFLEN 8142
+
 
 int startServer() {
 	// Initialize Winsock.
@@ -87,24 +89,32 @@ int startServer() {
 			WSACleanup();
 			return 1;
 		}
-		else
+
+		wprintf(L"Client connected.\n");
+
+		while (true)
 		{
-			wprintf(L"Client connected.\n");
-
 			recv(AcceptSocket, recvBuffer, REVBUFFLEN, 0);
-			std::cout << "Received: " << std::string(recvBuffer) << std::endl;
-			if (std::string(recvBuffer).compare("send_points") == 0) {
-				for (auto s : points) {
-					send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
+			cout << "Received: " << string(recvBuffer) << endl;
+			if (string(recvBuffer).compare("send_points") == 0) {
+				string s = "";
+				for (auto p : pointMap) {
+					s += p.first + ":" + to_string(p.second[0]) + "/" + to_string(p.second[1]) + "/" + to_string(p.second[2]) + "\n";
 				}
+				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
+				cout << "Sent data" << endl;
 			}
-
+			else { break; }
+			for(int i = 0; i < REVBUFFLEN; i++)
+			{
+				recvBuffer[i] = '\0';
+			}
 		}
 	}
 	// No longer need server socket
 	closesocket(ListenSocket);
-	std::cout << "Connection closed" << std::endl;
-	std::cin;
+	cout << "Connection closed" << endl;
+	cin;
 	WSACleanup();
 	return 0;
 }

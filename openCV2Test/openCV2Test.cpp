@@ -61,8 +61,8 @@ int drawColor(HANDLE h) {
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.3, 0.3); 
 	
-	if (!pointVec.empty()) {
-		for (std::pair<string, double*> e : pointVec) {
+	if (!pointMap.empty()) {
+		for (std::pair<string, double*> e : pointMap) {
 			cvCircle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
 			
 			stringstream text;
@@ -208,18 +208,24 @@ static void onClick(int event, int x, int y, int f, void*) {
 		rdWorldPos[3] = x;
 		rdWorldPos[4] = y;
 		stringstream tmp;
-		tmp << "P" << pointVec.size() + 1;
+		tmp << "P" << pointMap.size() + 1;
 		//string num = "P".append(to_string(pointVec.size() + 1));
 		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
+		pointMap[tmp.str()] = rdWorldPos;
 
 		int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
 		int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
 
-		colorMap["C" + to_string(colorMap.size())] = new int[5]{ cb, rgb, cg, rec_x, rec_y };
+		colorMap["C" + to_string(colorMap.size()+1)] = new int[5]{ cb, rgb, cg, rec_x, rec_y };
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
-		if (!pointVec.empty())
+		if (!pointVec.empty()) {
+			string s = pointVec.back().first;
+			pointMap.erase(s);
+			s[0] = 'C';
+			colorMap.erase(s);
 			pointVec.pop_back();
+		}
 	}
 }
 

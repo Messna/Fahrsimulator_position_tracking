@@ -28,6 +28,7 @@ int clickedY = 1;
 double* clickedPoint1 = nullptr;
 double* clickedPoint2 = nullptr;
 static vector<pair<string, double *>> pointVec;
+map<string, double *> pointMap;
 static bool run;
 map<string, int *> colorMap;
 

@@ -208,9 +208,12 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	
 
 
-
-
 	cvRectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	string ps = s;
+	ps[0] = 'P';
+	pointMap.at(ps)[0] = realcoord[0];
+	pointMap.at(ps)[1] = realcoord[1];
+	pointMap.at(ps)[2] = realcoord[2];
 
 	if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) {
 		rgb_target[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
@@ -222,14 +225,14 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	os << realcoord[2];
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
-	//std::cout << "X: " << realcoord[0] << " Y: " << realcoord[1] << " Z: " << realcoord[2] << std::endl;
+
 	cvPutText(color, outputStr.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
 
 	cvCircle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
-	delete rgb_max;
-	delete rgb_min;
+	delete[] rgb_max;
+	delete[] rgb_min;
 	delete target;
 	delete[] a;
 }
