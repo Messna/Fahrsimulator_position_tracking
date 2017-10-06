@@ -18,9 +18,8 @@
 
 #include <math.h>
 
-#include "NuiApi.h"
-#include "NuiImageCamera.h"
-#include "NuiSensor.h"
+#include "Kinect.h"
+#include "NtKinect.h"
 
 #include "opencv2\opencv.hpp"
 #include "opencv2\world.hpp"
@@ -30,44 +29,25 @@
 
 using namespace std;
 
-BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
-NUI_LOCKED_RECT depthLockedRect;
 
-IplImage* DrawCircleAtMiddle() {
-	cvCircle(color, cv::Point(320, 240), 5, cv::Scalar(0, 255, 0));
+BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
+
+cv::Mat DrawCircleAtMiddle() {
+	cv::circle(color, cv::Point(320, 240), 5, cv::Scalar(0, 255, 0));
 	return color;
 }
 
-int drawColor(HANDLE h) {
-	
-	const NUI_IMAGE_FRAME * pImageFrame = NULL;
-	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
-	if (FAILED(hr))
-	{
-		cout << "Get Image Frame Failed" << endl;
-		return -1;
-	}
-	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
-
-	NUI_LOCKED_RECT LockedRect;
-	pTexture->LockRect(0, &LockedRect, NULL, 0);
-	if (LockedRect.Pitch != 0)
-	{
-		BYTE * pBuffer = (BYTE*)LockedRect.pBits;
-		cvSetData(color, pBuffer, LockedRect.Pitch);
-	
-	}
-
+int drawColor() {
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.3, 0.3); 
 	
 	if (!pointVec.empty()) {
 		for (std::pair<string, double*> e : pointVec) {
-			cvCircle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
+			cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
 			
 			stringstream text;
 			text << setprecision(3) << e.first << " X:" << e.second[0] << " Y:" << e.second[1] << " Z:" << e.second[2];
-			cvPutText(color, text.str().c_str(), cv::Point2d(e.second[3] + 4, e.second[4] - 4), &font, cv::Scalar(0.0, 0.0, 0.0));
+			cv::putText(color, text.str().c_str(), cv::Point2d(e.second[3] + 4, e.second[4] - 4), 1, 1, cv::Scalar(0.0, 0.0, 0.0));
 		}
 	}
 
@@ -81,32 +61,19 @@ int drawColor(HANDLE h) {
 		findColorAndMark(p.second, p.first);
 	}
 	
-	cvShowImage("color image", color);
+	cv::imshow("color image", color);
 	
-	NuiImageStreamReleaseFrame(h, pImageFrame);
 	return 0;
 }
 
-int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
-
-	const NUI_IMAGE_FRAME * pImageFrame = NULL;
-	HRESULT hr = NuiImageStreamGetNextFrame(h, 0, &pImageFrame);
+int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
 
 	int** returnArray = new int*[width];
 	for (int i = 0; i < width; i++) {
 		returnArray[i] = new int[height];
 	}
 
-	INuiFrameTexture * pTexture = pImageFrame->pFrameTexture;
-	NUI_LOCKED_RECT LockedRect;
-	pTexture->LockRect(0, &LockedRect, NULL, 0);
-	if (LockedRect.Pitch == 0)
-	{
-		return returnArray;
-	}
-	USHORT * pBuff = (USHORT*)LockedRect.pBits;
-
-	int minVal = 100000;
+	/*int minVal = 100000;
 	int maxVal = -10000;
 
 	const int MIN_DIST = 800;
@@ -120,7 +87,7 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
 			int index = y * width + x;
-			unsigned short pixelVal = pBuff[index] >> 3;
+			unsigned short pixelVal = depthImg.at<UINT16>(x, y);
 			int grayVal = (pixelVal - MIN_DIST) / scale + 1;
 
 			if (pixelVal <= MIN_DIST) 
@@ -145,12 +112,10 @@ int** getDepthImage(HANDLE h, IplImage* depth, int width, int height) {
 			}
 		}
 	}
-
-	cvSetData(depth, buf, width * CHANNEL);
-	cvShowImage("depth image", depth);
-	NuiImageStreamReleaseFrame(h, pImageFrame);
-
-	depthLockedRect = LockedRect;
+*/
+	//cvSetData(depth, buf, width * CHANNEL);
+	cv::imshow("depth", depthImg);
+	//cvShowImage("depth image", depth);
 
 	return returnArray;
 }
@@ -159,7 +124,8 @@ static void writeDepthandColor() {
 	double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
 	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
 
-	CvScalar color_pxl = cvGet2D(color, clickedY, clickedX);
+	IplImage tmpColor = color;
+	CvScalar color_pxl = cvGet2D(&tmpColor, clickedY, clickedX);
 
 	uint8_t rgb = uint8_t(color_pxl.val[0]),
 		cg = uint8_t(color_pxl.val[1]),
@@ -180,10 +146,10 @@ static void writeDepthandColor() {
 		cv::Point2d d2P1 = cv::Point2d(clickedPoint1[3], clickedPoint1[4]);
 		cv::Point2d d2P2 = cv::Point2d(clickedPoint2[3], clickedPoint2[4]);
 		double length = GetLength(clickedPoint1, clickedPoint2);
-		cvLine(color, d2P1, d2P2, cv::Scalar(0.0, 0.0, 0.0), 2);
+		cv::line(color, d2P1, d2P2, cv::Scalar(0.0, 0.0, 0.0), 2);
 		CvFont font;
 		cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-		cvPutText(color, to_string(int(length)).c_str(), d2P2, &font, cv::Scalar(0.0, 0.0, 0.0));
+		cv::putText(color, to_string(int(length)).c_str(), d2P2, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
 	//	std::cout << "Draw Line " << length << "at P1: " << clickedPoint1[0] << "/" << clickedPoint1[1] << " P1: " << clickedPoint2[0] << "/" << clickedPoint2[1] << std::endl;
 	}
 
@@ -194,7 +160,8 @@ static void writeDepthandColor() {
 
 static void onClick(int event, int x, int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
-		CvScalar color_pxl = cvGet2D(color, y, x);
+		IplImage tmpColor = color;
+		CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
 
 		uint8_t rgb = uint8_t(color_pxl.val[0]), // B
 			cg = uint8_t(color_pxl.val[1]), // G
@@ -237,7 +204,6 @@ int main(int argc, char * argv[]) {
 
 	//colorMap["C4"] = new int[3]{ 181, 120, 183 };
 
-	color = cvCreateImageHeader(cvSize(COLOR_WIDTH, COLOR_HEIGHT), IPL_DEPTH_8U, 4);
 
 	depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HEIGHT), IPL_DEPTH_8U, CHANNEL);
 
@@ -247,52 +213,21 @@ int main(int argc, char * argv[]) {
 
 	cv::setMouseCallback("color image", onClick);
 
-	HRESULT hr = NuiInitialize(
-		NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX
-		| NUI_INITIALIZE_FLAG_USES_COLOR);
-
-	if (hr != S_OK)
-	{
-		cout << "NuiInitialize failed" << endl;
-		return hr;
-	}
-
-	HANDLE h1 = CreateEvent(NULL, TRUE, FALSE, NULL);
-	HANDLE h2 = NULL;
-	hr = NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_640x480,
-		0, 2, h1, &h2);
-
-	if (FAILED(hr))
-	{
-		cout << "Could not open image stream video" << endl;
-		return hr;
-	}
-
-	HANDLE h3 = CreateEvent(NULL, TRUE, FALSE, NULL);
-	HANDLE h4 = NULL;
-	hr = NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX,
-		NUI_IMAGE_RESOLUTION_320x240, 0, 2, h3, &h4);
-	if (FAILED(hr))
-	{
-		cout << "Could not open depth stream video" << endl;
-		return hr;
-	}
+	NtKinect kinect;
 
 	thread serverThread(&startServer);
 	cout << "Main thread" << endl;
 
 	while (true)
 	{
-		WaitForSingleObject(h3, INFINITE);
+		kinect.setRGB();
+		kinect.setDepth();
 
-		if (depthImg != nullptr) {
-			for_each(depthImg, depthImg + DEPTH_WIDTH, [](int* row) { delete[] row; });
-			delete[] depthImg;
-		}
+
+		depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.rows -1, kinect.depthImage.cols - 1);
 			
-		depthImg = getDepthImage(h4, depth, 320, 240);
-		WaitForSingleObject(h1, INFINITE);
-		drawColor(h2);
+		color = kinect.rgbImage;
+		drawColor();
 		
 		int c = cvWaitKey(1);
 
@@ -307,12 +242,8 @@ int main(int argc, char * argv[]) {
 	serverThread.join();
 
 	cvReleaseImageHeader(&depth);
-	cvReleaseImageHeader(&color);
-	
-	cvDestroyWindow("depth image");
-	cvDestroyWindow("color image");
 
-	NuiShutdown();
+	cv::destroyAllWindows();
 
 	return 0;
 }

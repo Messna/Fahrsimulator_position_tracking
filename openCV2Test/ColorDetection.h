@@ -26,9 +26,10 @@ void findNeighbors(int x, int y, double* target_color_max,
 	double* target_color_min,
 	std::map<std::pair<int, int>, bool>& stack) {
 
+	IplImage tmpColor = color;
 	// TODO FIND ERROR
 	if ((stack.find(std::make_pair(x, y)) == stack.end()) &&
-		has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x / 1.33335))) {
+		has_target_color(target_color_max, target_color_min, cvGet2D(&tmpColor, y, x / 1.33335))) {
 		stack[(std::make_pair(x, y))] = true;
 
 		if (x > 1) {
@@ -37,10 +38,10 @@ void findNeighbors(int x, int y, double* target_color_max,
 		if (y > 1) {
 			findNeighbors(x, y - 1, target_color_max, target_color_min, stack);
 		}
-		if (x < color->width - 1) {
+		if (x < tmpColor.width - 1) {
 			findNeighbors(x + 1, y, target_color_max, target_color_min, stack);
 		}
-		if (y < color->height - 1) {
+		if (y < tmpColor.height - 1) {
 			findNeighbors(x, y + 1, target_color_max, target_color_min, stack);
 		}
 	}
@@ -78,10 +79,10 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 	double blue_sum = 0.0;
 	double green_sum = 0.0;
 
-
-	for (int x = 0; x < color->width; x++) {
-		for (int y = 0; y < color->height; y++) {
-			CvScalar color_pxl = cvGet2D(color, y, x);
+	IplImage tmpColor = color;
+	for (int x = 0; x < tmpColor.width; x++) {
+		for (int y = 0; y < tmpColor.height; y++) {
+			CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
 			uint8_t green = uint8_t(color_pxl.val[0]),
 				blue = uint8_t(color_pxl.val[1]),
 				red = uint8_t(color_pxl.val[2]),
@@ -135,7 +136,8 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 
 	for (int x = target_color[3]; x < target_color[3]+50; x++) {
 		for (int y = target_color[4]; y < target_color[4]+50; y++) {
-			CvScalar color_pxl = cvGet2D(color, y, x);
+			IplImage tmpColor = color;
+			CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
 			uint8_t green = uint8_t(color_pxl.val[0]),
 				blue = uint8_t(color_pxl.val[1]),
 				red = uint8_t(color_pxl.val[2]),
@@ -192,12 +194,12 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	*/
 
 	int * a = get_seed_coordinates3(rgb_max, rgb_min, rgb_target);
-	cv::Mat output_frame(cv::cvarrToMat(color));
+	cv::Mat output_frame(color);
 
 
 	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
 
-	cvCircle(color, *target, 1, cv::Scalar(0, 0, 0));
+	cv::circle(color, *target, 1, cv::Scalar(0, 0, 0));
 	double* angle = GetAngleFromColorIndex(a[0], a[1]);
 	double* realcoord = Get3DCoordinates(angle, depthImg);
 	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
@@ -210,7 +212,7 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 
 
 
-	cvRectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	cv::rectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 
 	if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) {
 		rgb_target[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
@@ -223,11 +225,11 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
 	//std::cout << "X: " << realcoord[0] << " Y: " << realcoord[1] << " Z: " << realcoord[2] << std::endl;
-	cvPutText(color, outputStr.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
+	cv::putText(color, outputStr.c_str(), textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
 	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
 	//std::cout << result.size() << std::endl;
 
-	cvCircle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
+	cv::circle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
 	delete rgb_max;
 	delete rgb_min;
 	delete target;

@@ -6,10 +6,10 @@
 
 #include "opencv2\opencv.hpp"
 
-#define COLOR_WIDTH 640    
-#define COLOR_HEIGHT 480    
-#define DEPTH_WIDTH 320    
-#define DEPTH_HEIGHT 240      
+#define COLOR_WIDTH 1920    
+#define COLOR_HEIGHT 1080    
+#define DEPTH_WIDTH 424    
+#define DEPTH_HEIGHT 512      
 #define CHANNEL 3
 
 #define PI 3.14159265358979323846
@@ -31,6 +31,6 @@ static vector<pair<string, double *>> pointVec;
 static bool run;
 map<string, int *> colorMap;
 
-IplImage* color;
+cv::Mat color;
 IplImage* depth;
 int** depthImg = nullptr;
