@@ -3,8 +3,9 @@
 #include <vector>
 #include <map>
 #include <utility>
-
+//#include <opencv2\core\types_c.h>
 #include "opencv2\opencv.hpp"
+#include "opencv2\core\core_c.h"
 
 #define COLOR_WIDTH 640    
 #define COLOR_HEIGHT 480    

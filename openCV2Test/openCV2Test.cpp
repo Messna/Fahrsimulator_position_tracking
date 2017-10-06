@@ -1,3 +1,5 @@
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #include "stdafx.h"
 
 #include <winsock2.h>
@@ -26,7 +28,7 @@
 #include "opencv2\world.hpp"
 #include "opencv2\highgui.hpp"
 #include "opencv2\core\cvstd.hpp"
-#include "Server.h"
+//#include "Server.h"
 
 using namespace std;
 
@@ -35,6 +37,7 @@ NUI_LOCKED_RECT depthLockedRect;
 
 IplImage* DrawCircleAtMiddle() {
 	cvCircle(color, cv::Point(320, 240), 5, cv::Scalar(0, 255, 0));
+	
 	return color;
 }
 
@@ -239,7 +242,7 @@ int main(int argc, char * argv[]) {
 		return hr;
 	}
 
-	thread serverThread(&startServer);
+	//thread serverThread(&startServer);
 	cout << "Main thread" << endl;
 
 	while (true)
@@ -262,7 +265,7 @@ int main(int argc, char * argv[]) {
 	}
 
 	run = false;
-	serverThread.join();
+	//serverThread.join();
 
 	cvReleaseImageHeader(&depth);
 	cvReleaseImageHeader(&color);
