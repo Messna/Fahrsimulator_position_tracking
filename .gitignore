@@ -89,3 +89,6 @@ openCV2Test.VC.db
 openCV2Test/openCV2Test.vcxproj
 *.vcxproj
 openCV2Test/openCV2Test.vcxproj.filters
+.vs/openCV2Test/v15/.suo
+*.db-shm
+*.db-wal
