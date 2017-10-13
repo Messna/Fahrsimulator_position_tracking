@@ -95,7 +95,7 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 				green >= target_color_min[1] && green <= target_color_max[1] &&
 				blue >= target_color_min[2] && blue <= target_color_max[2]) {
 
-				int x2 = x*1.333;
+				int x2 = x;
 				int *a = new int[2]{ x2, y };
 				cont.push_back(a);
 				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
@@ -150,11 +150,9 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 				green >= target_color_min[1] && green <= target_color_max[1] &&
 				blue >= target_color_min[2] && blue <= target_color_max[2]) {
 
-				int x2 = x*1.333;
-
 				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
 					min_error = abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]);
-					best_pos[0] = x2;
+					best_pos[0] = x;
 					best_pos[1] = y;
 				}
 			}
@@ -199,11 +197,11 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	cv::Mat output_frame(color);
 
 
-	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
+	cv::Point *target = new cv::Point(int(0.5 + a[0]), a[1]);
 
 	cv::circle(color, *target, 1, cv::Scalar(0, 0, 0));
 	double* angle = GetAngleFromColorIndex(a[0], a[1]);
-	double* realcoord = Get3DCoordinates(angle, depthImg);
+	double* realcoord = Get3DCoordinates(angle);
 	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 	if (textPos.x < target->x &&textPos.y < target->y) {
 		textPos.x = target->x + 2;

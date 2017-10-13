@@ -162,7 +162,9 @@
     <ClInclude Include="ColorDetection.h" />
     <ClInclude Include="DepthLib.h" />
     <ClInclude Include="Globals.h" />
+    <ClInclude Include="KinectLayer.h" />
     <ClInclude Include="NtKinect.h" />
+    <ClInclude Include="Server.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

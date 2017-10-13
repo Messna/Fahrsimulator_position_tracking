@@ -19,7 +19,7 @@
 #include <math.h>
 
 #include "Kinect.h"
-#include "NtKinect.h"
+#include "KinectLayer.h"
 
 #include "opencv2\opencv.hpp"
 #include "opencv2\world.hpp"
@@ -29,11 +29,10 @@
 
 using namespace std;
 
-
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 
 cv::Mat DrawCircleAtMiddle() {
-	cv::circle(color, cv::Point(320, 240), 5, cv::Scalar(0, 255, 0));
+	cv::circle(color, cv::Point(COLOR_WIDTH / 2, COLOR_HEIGHT / 2), 5, cv::Scalar(0, 255, 0));
 	return color;
 }
 
@@ -71,7 +70,7 @@ int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
 		returnArray[i] = new int[height];
 	}
 
-	int minVal = 100000;
+	/*int minVal = 100000;
 	int maxVal = -10000;
 
 	const int MIN_DIST = 800;
@@ -113,14 +112,14 @@ int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
 
 	//cvSetData(depth, buf, width * CHANNEL);
 	cv::imshow("depth image", depthImg);
-	//cvShowImage("depth image", depth);
+	//cvShowImage("depth image", depth); */
 
 	return returnArray;
 }
 
 static void writeDepthandColor() {
 	double* colorAngleArr = GetAngleFromColorIndex(clickedX, clickedY);
-	double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
+	double* rdWorldPos = Get3DCoordinates(colorAngleArr);
 
 	IplImage tmpColor = color;
 	CvScalar color_pxl = cvGet2D(&tmpColor, clickedY, clickedX);
@@ -157,7 +156,6 @@ static void writeDepthandColor() {
 }
 
 static void onClick(int event, int x, int y, int f, void*) {
-	kinect.setDepth();
 	if (event == CV_EVENT_LBUTTONDOWN) {
 		IplImage tmpColor = color;
 		CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
@@ -170,12 +168,11 @@ static void onClick(int event, int x, int y, int f, void*) {
 		std::cout << "Color: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << std::endl;
 
 		double* colorAngleArr = GetAngleFromColorIndex(x, y);
-		double* rdWorldPos = Get3DCoordinates(colorAngleArr, depthImg);
+		double* rdWorldPos = Get3DCoordinates(colorAngleArr);
 		rdWorldPos[3] = x;
 		rdWorldPos[4] = y;
 		stringstream tmp;
-		tmp << "P" << pointVec.size() + 1;
-		//string num = "P".append(to_string(pointVec.size() + 1));
+		tmp << "P" << pointVec.size() + 1 << "(x: " << x << " y: " << y << ")";
 		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
 
 		int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
@@ -207,19 +204,16 @@ int main(int argc, char * argv[]) {
 
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 
-	cv::namedWindow("depth image", CV_WINDOW_AUTOSIZE);
-
 	cv::setMouseCallback("color image", onClick);
 
 
 	thread serverThread(&startServer);
 	cout << "Main thread" << endl;
-	kinect.setDepth();
 	while (true)
 	{
 		kinect.setRGB();
 	
-		depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.cols, kinect.depthImage.rows);
+		//depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.cols, kinect.depthImage.rows);
 		color = kinect.rgbImage;
 		drawColor();
 		

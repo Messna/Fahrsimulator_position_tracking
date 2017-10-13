@@ -1,5 +1,7 @@
 #pragma once
 
+#include "KinectLayer.h"
+
 double GetRadianFromDegree(double angleInDegree) {
 	return angleInDegree * PI / 180.0;
 }
@@ -32,7 +34,7 @@ double* GetAngleFromColorIndex(int colorX, int colorY) {
 	return returnArr;
 }
 
-double* Get3DCoordinates(double* angles, int** depthArr) {
+double* Get3DCoordinates(double* angles) {
 
 	double* realWorldCoords = new double[5]{ -1000, -1000, -1000, 1, 1 };
 
@@ -57,7 +59,7 @@ double* Get3DCoordinates(double* angles, int** depthArr) {
 
 	//check range of index (is in FoV)
 	if (idxDepthX >= 0 && idxDepthX < DEPTH_WIDTH && idxDepthY >= 0 && idxDepthY < DEPTH_HEIGHT) {
-		double depthValZ = depthArr[idxDepthX][idxDepthY];
+		double depthValZ = kinect.getDepthForPixel(idxDepthX, idxDepthY);
 
 		double realWorldZ = depthValZ / 10.0; //convert from mm to cm
 		double realWorldX = tan(GetRadianFromDegree(colorAngleX)) * realWorldZ;

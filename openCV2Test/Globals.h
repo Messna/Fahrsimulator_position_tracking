@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "opencv2\opencv.hpp"
+#include "KinectLayer.h"
 
 #define COLOR_WIDTH 1920    
 #define COLOR_HEIGHT 1080    
@@ -34,4 +35,4 @@ map<string, int *> colorMap;
 cv::Mat color;
 IplImage* depth;
 int** depthImg = nullptr;
-NtKinect kinect;
+KinectLayer kinect;

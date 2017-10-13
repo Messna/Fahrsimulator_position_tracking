@@ -568,7 +568,7 @@ private:
 	}
 	void updateDepthFrame() {
 		if (!depth_initialized) initializeDepthFrame();
-		CComPtr<IDepthFrame> depthFrame;
+		CComPtr<IDepthFrame> depthFrame; 
 		auto ret = depthFrameReader->AcquireLatestFrame(&depthFrame);
 		if (FAILED(ret))return;
 		ERROR_CHECK(depthFrame->CopyFrameDataToArray((UINT)depthBuffer.size(), &depthBuffer[0]));
