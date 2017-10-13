@@ -24,35 +24,37 @@ bool has_target_color(double* target_color_max, double* target_color_min, CvScal
 
 void findNeighbors(int x, int y, double* target_color_max,
 	double* target_color_min,
-	std::map<std::pair<int, int>, bool>& stack) {
-
+	std::map<string, bool>& hashSet,
+	std::vector<std::pair<int, int>>& region) {
+	string xyKey = x + "|" + y;
 	IplImage tmpColor = color;
-	// TODO FIND ERROR
-	if ((stack.find(std::make_pair(x, y)) == stack.end()) &&
-		has_target_color(target_color_max, target_color_min, cvGet2D(&tmpColor, y, x / 1.33335))) {
-		stack[(std::make_pair(x, y))] = true;
+	if ((hashSet.find(xyKey) == hashSet.end()) &&
+		has_target_color(target_color_max, target_color_min, cvGet2D(&tmpColor, y, x))) {
+		hashSet[xyKey] = true;
+		region.push_back(  std::make_pair(x, y));
 
 		if (x > 1) {
-			findNeighbors(x - 1, y, target_color_max, target_color_min, stack);
+			findNeighbors(x - 1, y, target_color_max, target_color_min, hashSet, region);
 		}
 		if (y > 1) {
-			findNeighbors(x, y - 1, target_color_max, target_color_min, stack);
+			findNeighbors(x, y - 1, target_color_max, target_color_min, hashSet, region);
 		}
 		if (x < tmpColor.width - 1) {
-			findNeighbors(x + 1, y, target_color_max, target_color_min, stack);
+			findNeighbors(x + 1, y, target_color_max, target_color_min, hashSet, region);
 		}
 		if (y < tmpColor.height - 1) {
-			findNeighbors(x, y + 1, target_color_max, target_color_min, stack);
+			findNeighbors(x, y + 1, target_color_max, target_color_min, hashSet, region);
 		}
 	}
 }
 
 void region_growing(int* start, double* target_color_max, double* target_color_min) {
-	std::map<std::pair<int, int>, bool> stack;
+	std::map<string, bool> hashSet;
+	std::vector<std::pair<int, int>> region;
 
 	try
 	{
-		findNeighbors(start[0], start[1], target_color_max, target_color_min, stack);
+		findNeighbors(start[0], start[1], target_color_max, target_color_min, hashSet, region);
 
 	}
 	catch (const std::exception &e)
@@ -61,13 +63,13 @@ void region_growing(int* start, double* target_color_max, double* target_color_m
 	}
 	long int sum_x = 0;
 	long int sum_y = 0;
-	if (!stack.empty()) {
-		for (auto a : stack) {
-			sum_x += a.first.first;
-			sum_y += a.first.second;
+	if (!region.empty()) {
+		for (auto a : region) {
+			sum_x += a.first;
+			sum_y += a.second;
 		}
-		start[0] = sum_x / stack.size();
-		start[1] = sum_y / stack.size();
+		start[0] = sum_x / hashSet.size();
+		start[1] = sum_y / hashSet.size();
 	}
 }
 std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color) {
