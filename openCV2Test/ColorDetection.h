@@ -137,10 +137,10 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 	double green_sum = 0.0;
 	IplImage tmpColor = color;
 
-	for (int x = target_color[3] - 50; x < target_color[3]+100; x++) {
+	for (int x = target_color[3]; x < target_color[3]+50; x++) {
 		if (x < 0 || x > tmpColor.width) continue;
 
-		for (int y = target_color[4] - 50; y < target_color[4]+100; y++) {
+		for (int y = target_color[4]; y < target_color[4]+50; y++) {
 			if (y < 0 || y > tmpColor.height) continue;
 
 			CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
