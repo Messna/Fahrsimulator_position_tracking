@@ -95,3 +95,4 @@ openCV2Test/openCV2Test.vcxproj.filters
 *.ipch
 *.vspx
 *.psess
+*.user
