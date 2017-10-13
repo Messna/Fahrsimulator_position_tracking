@@ -31,17 +31,12 @@ using namespace std;
 
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 
-cv::Mat DrawCircleAtMiddle() {
-	cv::circle(color, cv::Point(COLOR_WIDTH / 2, COLOR_HEIGHT / 2), 5, cv::Scalar(0, 255, 0));
-	return color;
-}
-
 int drawColor() {
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.3, 0.3); 
 	
 	if (!pointVec.empty()) {
-		for (std::pair<string, double*> e : pointVec) {
+		for (pair<string, double*> e : pointVec) {
 			cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
 			
 			stringstream text;
@@ -63,7 +58,7 @@ int drawColor() {
 	return 0;
 }
 
-int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
+int** getDepthImage(int width, int height) {
 
 	int** returnArray = new int*[width];
 	for (int i = 0; i < width; i++) {
@@ -165,7 +160,7 @@ static void onClick(int event, int x, int y, int f, void*) {
 			cb = uint8_t(color_pxl.val[2]); // R
 		//	c4 = uint8_t(color_pxl.val[3]); // Alpha
 
-		std::cout << "Color: B: " << (int)rgb << " G: " << (int)cg << " R: " << (int)cb << std::endl;
+		cout << "Color: B: " << static_cast<int>(rgb) << " G: " << static_cast<int>(cg) << " R: " << static_cast<int>(cb) << endl;
 
 		double* colorAngleArr = GetAngleFromColorIndex(x, y);
 		double* rdWorldPos = Get3DCoordinates(colorAngleArr);
@@ -190,16 +185,7 @@ static void editColorValuesOfPoints(int point) {
 	
 }
 
-int main(int argc, char * argv[]) {
-	// Red
-	//colorMap["C1"] = new int[3]{ 182, 50, 40 };
-
-	//colorMap["C2"] = new int[3]{ 70, 121, 120 };
-
-	//colorMap["C3"] = new int[3]{ 86, 133, 88 };
-
-	//colorMap["C4"] = new int[3]{ 181, 120, 183 };
-
+int main() {
 	depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HEIGHT), IPL_DEPTH_8U, CHANNEL);
 
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);

@@ -32,8 +32,7 @@ int startServer() {
 	//----------------------
 	// Create a SOCKET for listening for
 	// incoming connection requests.
-	SOCKET ListenSocket;
-	ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (ListenSocket == INVALID_SOCKET)
 	{
 		wprintf(L"socket failed with error: %ld\n", WSAGetLastError());
@@ -49,7 +48,7 @@ int startServer() {
 	service.sin_port = htons(27015);
 
 	if (::bind(ListenSocket,
-		(SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
+		reinterpret_cast<SOCKADDR *>(& service), sizeof(service)) == SOCKET_ERROR)
 	{
 		wprintf(L"bind failed with error: %ld\n", WSAGetLastError());
 		closesocket(ListenSocket);
@@ -66,9 +65,6 @@ int startServer() {
 		WSACleanup();
 		return 1;
 	}
-	//----------------------
-	// Create a SOCKET for accepting incoming requests.
-	SOCKET AcceptSocket;
 	wprintf(L"Waiting for client to connect...\n");
 
 	//----------------------
@@ -78,7 +74,7 @@ int startServer() {
 
 	while (run)
 	{
-		AcceptSocket = accept(ListenSocket, NULL, NULL);
+		SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
 
 		if (AcceptSocket == INVALID_SOCKET)
 		{
@@ -104,7 +100,7 @@ int startServer() {
 	// No longer need server socket
 	closesocket(ListenSocket);
 	std::cout << "Connection closed" << std::endl;
-	std::cin;
+	cin;
 	WSACleanup();
 	return 0;
 }

@@ -4,7 +4,7 @@
 
 using namespace std;
 
-bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
+inline bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
 
 	uint8_t green = 0, blue = 0, red = 0, c4 = 0;
 	green = uint8_t(color_pxl.val[0]),
@@ -22,13 +22,13 @@ bool has_target_color(double* target_color_max, double* target_color_min, CvScal
 	return false;
 }
 
-void findNeighbors(int x, int y, double* target_color_max,
+inline void findNeighbors(int x, int y, double* target_color_max,
 	double* target_color_min,
 	std::map<string, bool>& hashSet,
 	std::vector<std::pair<int, int>>& region) {
 	string xyKey = x + "|" + y;
 	IplImage tmpColor = color;
-	if ((hashSet.find(xyKey) == hashSet.end()) &&
+	if (hashSet.find(xyKey) == hashSet.end() &&
 		has_target_color(target_color_max, target_color_min, cvGet2D(&tmpColor, y, x))) {
 		hashSet[xyKey] = true;
 		region.push_back(  std::make_pair(x, y));
@@ -48,7 +48,7 @@ void findNeighbors(int x, int y, double* target_color_max,
 	}
 }
 
-void region_growing(int* start, double* target_color_max, double* target_color_min) {
+inline void region_growing(int* start, double* target_color_max, double* target_color_min) {
 	std::map<string, bool> hashSet;
 	std::vector<std::pair<int, int>> region;
 
@@ -72,7 +72,8 @@ void region_growing(int* start, double* target_color_max, double* target_color_m
 		start[1] = sum_y / hashSet.size();
 	}
 }
-std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color) {
+
+inline vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color) {
 	std::vector<int*> cont;
 	int* best_pos = new int[2]{ 0, 0 };
 	long int min_error = 255 * 255 * 255;
@@ -126,15 +127,10 @@ std::vector<int*> get_seed_coordinates2(double* target_color_max, double* target
 	return cont;
 
 }
-int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color) {
 
-
+inline int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color) {
 	int* best_pos = new int[2]{ 1, 1 };
 	long int min_error = 255 * 255 * 255;
-	int i = 0;
-	double red_sum = 0.0;
-	double blue_sum = 0.0;
-	double green_sum = 0.0;
 	IplImage tmpColor = color;
 
 	for (int x = target_color[3]; x < target_color[3]+50; x++) {
@@ -169,9 +165,7 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 }
 
 
-
-void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleranceFactor = generalTolerance) {
-
+inline void findColorAndMark(int* rgb_target, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
 	double range = toleranceFactor * 255;
 	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
 	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
@@ -229,8 +223,8 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	//std::cout << result.size() << std::endl;
 
 	cv::circle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
-	delete rgb_max;
-	delete rgb_min;
+	delete[] rgb_max;
+	delete[] rgb_min;
 	delete target;
 	delete[] a;
 }
