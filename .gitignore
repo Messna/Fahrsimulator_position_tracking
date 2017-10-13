@@ -89,3 +89,4 @@ openCV2Test.VC.db
 openCV2Test/openCV2Test.vcxproj
 openCV2Test/openCV2Test.vcxproj.user
 *.filters
+*.ipch
