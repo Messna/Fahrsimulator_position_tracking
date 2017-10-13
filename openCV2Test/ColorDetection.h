@@ -135,10 +135,10 @@ int* get_seed_coordinates3(double* target_color_max, double* target_color_min, i
 	double red_sum = 0.0;
 	double blue_sum = 0.0;
 	double green_sum = 0.0;
+	IplImage tmpColor = color;
 
 	for (int x = target_color[3]; x < target_color[3]+50; x++) {
 		for (int y = target_color[4]; y < target_color[4]+50; y++) {
-			IplImage tmpColor = color;
 			CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
 			uint8_t green = uint8_t(color_pxl.val[0]),
 				blue = uint8_t(color_pxl.val[1]),
@@ -196,7 +196,6 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 	int * a = get_seed_coordinates3(rgb_max, rgb_min, rgb_target);
 	cv::Mat output_frame(color);
 
-
 	cv::Point *target = new cv::Point(int(0.5 + a[0]), a[1]);
 
 	cv::circle(color, *target, 1, cv::Scalar(0, 0, 0));
@@ -207,10 +206,6 @@ void findColorAndMark(int* rgb_target, std::string s = "unknown", double toleran
 		textPos.x = target->x + 2;
 		textPos.y = target->y + 2;
 	}
-	
-
-
-
 
 	cv::rectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 
