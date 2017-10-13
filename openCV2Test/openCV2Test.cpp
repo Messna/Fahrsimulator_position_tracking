@@ -55,8 +55,6 @@ int drawColor() {
 	//Color-Format = RBG
 	int* rgb_target;
 
-	IplImage* tmp_color = nullptr;
-
 	for (auto const& p : colorMap) {
 		findColorAndMark(p.second, p.first);
 	}
@@ -73,7 +71,7 @@ int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
 		returnArray[i] = new int[height];
 	}
 
-	/*int minVal = 100000;
+	int minVal = 100000;
 	int maxVal = -10000;
 
 	const int MIN_DIST = 800;
@@ -87,7 +85,7 @@ int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
 			int index = y * width + x;
-			unsigned short pixelVal = depthImg.at<UINT16>(x, y);
+			unsigned short pixelVal = depthImg.at<unsigned short>(y, x);
 			int grayVal = (pixelVal - MIN_DIST) / scale + 1;
 
 			if (pixelVal <= MIN_DIST) 
@@ -112,9 +110,9 @@ int** getDepthImage(cv::Mat depthImg, IplImage* depth, int width, int height) {
 			}
 		}
 	}
-*/
+
 	//cvSetData(depth, buf, width * CHANNEL);
-	cv::imshow("depth", depthImg);
+	cv::imshow("depth image", depthImg);
 	//cvShowImage("depth image", depth);
 
 	return returnArray;
@@ -159,6 +157,7 @@ static void writeDepthandColor() {
 }
 
 static void onClick(int event, int x, int y, int f, void*) {
+	kinect.setDepth();
 	if (event == CV_EVENT_LBUTTONDOWN) {
 		IplImage tmpColor = color;
 		CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
@@ -204,28 +203,23 @@ int main(int argc, char * argv[]) {
 
 	//colorMap["C4"] = new int[3]{ 181, 120, 183 };
 
-
 	depth = cvCreateImageHeader(cvSize(DEPTH_WIDTH, DEPTH_HEIGHT), IPL_DEPTH_8U, CHANNEL);
 
-	cvNamedWindow("color image", CV_WINDOW_AUTOSIZE);
+	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 
-	cvNamedWindow("depth image", CV_WINDOW_AUTOSIZE);
+	cv::namedWindow("depth image", CV_WINDOW_AUTOSIZE);
 
 	cv::setMouseCallback("color image", onClick);
 
-	NtKinect kinect;
 
 	thread serverThread(&startServer);
 	cout << "Main thread" << endl;
-
+	kinect.setDepth();
 	while (true)
 	{
 		kinect.setRGB();
-		kinect.setDepth();
-
-
-		depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.rows -1, kinect.depthImage.cols - 1);
-			
+	
+		depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.cols, kinect.depthImage.rows);
 		color = kinect.rgbImage;
 		drawColor();
 		
