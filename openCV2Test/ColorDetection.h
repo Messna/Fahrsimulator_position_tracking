@@ -55,7 +55,6 @@ inline void region_growing(int* start, double* target_color_max, double* target_
 	try
 	{
 		findNeighbors(start[0], start[1], target_color_max, target_color_min, hashSet, region);
-		cout << region.size() << endl;
 	}
 	catch (const std::exception &e)
 	{
@@ -78,9 +77,6 @@ inline vector<int*> get_seed_coordinates2(double* target_color_max, double* targ
 	int* best_pos = new int[2]{ 0, 0 };
 	long int min_error = 255 * 255 * 255;
 	int i = 0;
-	double red_sum = 0.0;
-	double blue_sum = 0.0;
-	double green_sum = 0.0;
 
 	IplImage tmpColor = color;
 	for (int x = 0; x < tmpColor.width; x++) {
