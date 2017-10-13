@@ -55,7 +55,7 @@ inline void region_growing(int* start, double* target_color_max, double* target_
 	try
 	{
 		findNeighbors(start[0], start[1], target_color_max, target_color_min, hashSet, region);
-
+		cout << region.size() << endl;
 	}
 	catch (const std::exception &e)
 	{
@@ -207,7 +207,7 @@ inline void findColorAndMark(int* rgb_target, std::string s = "unknown", const d
 
 	cv::rectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 
-	if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) {
+	if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) { // TODO Nicht bewegen wenn kack Farbe
 		rgb_target[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
 		rgb_target[4] = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
 	}
