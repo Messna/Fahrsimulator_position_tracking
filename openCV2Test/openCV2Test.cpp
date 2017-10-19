@@ -32,9 +32,6 @@ using namespace std;
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 
 int drawColor() {
-	CvFont font;
-	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.3, 0.3); 
-	
 	if (!pointVec.empty()) {
 		for (pair<string, double*> e : pointVec) {
 			cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
@@ -150,17 +147,17 @@ static void writeDepthandColor() {
 	cvPutText(color, "Test", textPos, &font, cv::Scalar(0.0, 0.0, 0.0)); */
 }
 
-static void onClick(int event, int x, int y, int f, void*) {
+
+static void onClick(const int event, const int x, const int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
-		IplImage tmpColor = color;
-		CvScalar color_pxl = cvGet2D(&tmpColor, y, x);
+		cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
 
-		uint8_t rgb = uint8_t(color_pxl.val[0]), // B
-			cg = uint8_t(color_pxl.val[1]), // G
-			cb = uint8_t(color_pxl.val[2]); // R
-		//	c4 = uint8_t(color_pxl.val[3]); // Alpha
+		const uint8_t blue = uint8_t(color_val[0]), // B
+			green = uint8_t(color_val[1]), // G
+			red = uint8_t(color_val[2]); // R
+		//	alpha = uint8_t(colorVal[3]); // Alpha
 
-		cout << "Color: B: " << static_cast<int>(rgb) << " G: " << static_cast<int>(cg) << " R: " << static_cast<int>(cb) << endl;
+		cout << "Color: B: " << static_cast<int>(blue) << " G: " << static_cast<int>(green) << " R: " << static_cast<int>(red) << endl;
 
 		double* colorAngleArr = GetAngleFromColorIndex(x, y);
 		double* rdWorldPos = Get3DCoordinates(colorAngleArr);
@@ -173,7 +170,7 @@ static void onClick(int event, int x, int y, int f, void*) {
 		int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
 		int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
 
-		colorMap["C" + to_string(colorMap.size())] = new int[5]{ cb, rgb, cg, rec_x, rec_y };
+		colorMap["C" + to_string(colorMap.size())] = new int[5]{ blue, green, red, rec_x, rec_y };
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		if (!pointVec.empty())
