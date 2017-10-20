@@ -1,6 +1,7 @@
 #pragma once
 
 #include "opencv2/opencv.hpp"
+#include "ColorPixel.h"
 
 using namespace std;
 
@@ -75,7 +76,7 @@ inline void region_growing(int* start, double* target_color_max, double* target_
 	}
 }
 
-//inline vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_color) {
+//inline vector<int*> get_seed_coordinates2(double* target_color_max, double* target_color_min, int* target_colorpixel) {
 //	std::vector<int*> cont;
 //	int* best_pos = new int[2]{ 0, 0 };
 //	long int min_error = 255 * 255 * 255;
@@ -89,7 +90,7 @@ inline void region_growing(int* start, double* target_color_max, double* target_
 //				blue = uint8_t(color_pxl.val[1]),
 //				red = uint8_t(color_pxl.val[2]),
 //				c4 = uint8_t(color_pxl.val[3]);
-//			//target_color = RBG
+//			//target_colorpixel = RBG
 //
 //			if (red >= target_color_min[0] && red <= target_color_max[0] &&
 //				green >= target_color_min[1] && green <= target_color_max[1] &&
@@ -98,8 +99,8 @@ inline void region_growing(int* start, double* target_color_max, double* target_
 //				int x2 = x;
 //				int *a = new int[2]{ x2, y };
 //				cont.push_back(a);
-//				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
-//					min_error = abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]);
+//				if (abs(red - target_colorpixel.blue) * abs(blue - target_colorpixel.green) * abs(green - target_colorpixel.red) < min_error) {
+//					min_error = abs(red - target_colorpixel.blue) * abs(blue - target_colorpixel.green) * abs(green - target_colorpixel.red);
 //					best_pos[0] = x2;
 //					best_pos[1] = y;
 //				}
@@ -127,14 +128,14 @@ inline void region_growing(int* start, double* target_color_max, double* target_
 //
 //}
 
-inline int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color) {
-	int* best_pos = new int[2]{ target_color[3], target_color[4] };
+inline int* get_seed_coordinates3(double* target_color_max, double* target_color_min, ColorPixel target_colorpixel) {
+	int* best_pos = new int[2]{ target_colorpixel.x, target_colorpixel.y };
 	long int min_error = 255 * 255 * 255;
 
-	for (int x = target_color[3]; x < target_color[3]+50; x++) {
+	for (int x = target_colorpixel.x; x < target_colorpixel.x+50; x++) {
 		if (x < 0 || x > COLOR_WIDTH) continue;
 
-		for (int y = target_color[4]; y < target_color[4]+50; y++) {
+		for (int y = target_colorpixel.y; y < target_colorpixel.y+50; y++) {
 			if (y < 0 || y > COLOR_HEIGHT) continue;
 
 			cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
@@ -142,14 +143,14 @@ inline int* get_seed_coordinates3(double* target_color_max, double* target_color
 				green = uint8_t(color_val[1]),
 				red = uint8_t(color_val[2]),
 				alpha = uint8_t(color_val[3]);
-			//target_color = RBG
+			//target_colorpixel = RBG
 
 			if (blue >= target_color_min[0] && blue <= target_color_max[0] &&
 				green >= target_color_min[1] && green <= target_color_max[1] &&
 				red >= target_color_min[2] && red <= target_color_max[2]) {
 
-				if (abs(blue - target_color[0]) * abs(green - target_color[1]) * abs(red - target_color[2]) < min_error) {
-					min_error = abs(blue - target_color[0]) * abs(green - target_color[1]) * abs(red - target_color[2]);
+				if (abs(blue - target_colorpixel.blue) * abs(green - target_colorpixel.green) * abs(red - target_colorpixel.red) < min_error) {
+					min_error = abs(blue - target_colorpixel.blue) * abs(green - target_colorpixel.green) * abs(red - target_colorpixel.red);
 					best_pos[0] = x;
 					best_pos[1] = y;
 				}
@@ -163,21 +164,21 @@ inline int* get_seed_coordinates3(double* target_color_max, double* target_color
 }
 
 
-inline void findColorAndMark(int* rgb_target, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
+inline void findColorAndMark(ColorPixel target_pixel, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
 	const double range = toleranceFactor * 255;
-	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
-	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
+	double* rgb_min = new double[3]{ max(0.0, target_pixel.red - range), max(0.0, target_pixel.green - range), max(0.0, target_pixel.blue - range) };
+	double* rgb_max = new double[3]{ min(255.0, target_pixel.red + range), min(255.0, target_pixel.green + range), min(255.0, target_pixel.blue + range) };
 	cv::Point textPos(0, 0);
 
 	/*
-	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, rgb_target, color);
+	std::vector<int*> result = get_seed_coordinates2(rgb_max, rgb_min, target_pixel, color);
 	cv::Mat output_frame(cv::cvarrToMat(color));
 	for (auto a : result) {
 
 	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
 
 	cvCircle(color, *target, 2, cv::Scalar(169, 169, 169));
-	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	//cvCircle(color, *target, 2, cv::Scalar(target_pixel[1], target_pixel[2], target_pixel[0]));
 	if (textPos.x < target->x &&textPos.y < target->y) {
 	textPos.x = target->x + 2;
 	textPos.y = target->y + 2;
@@ -189,7 +190,7 @@ inline void findColorAndMark(int* rgb_target, std::string s = "unknown", const d
 	}
 	*/
 
-	int* best_pos = get_seed_coordinates3(rgb_max, rgb_min, rgb_target);
+	int* best_pos = get_seed_coordinates3(rgb_max, rgb_min, target_pixel);
 	cv::Mat output_frame(color);
 
 	cv::Point *target = new cv::Point(int(0.5 + best_pos[0]), best_pos[1]);
@@ -197,21 +198,21 @@ inline void findColorAndMark(int* rgb_target, std::string s = "unknown", const d
 	cv::circle(color, *target, 1, cv::Scalar(0, 0, 0));
 	double* angle = GetAngleFromColorIndex(best_pos[0], best_pos[1]);
 	double* realcoord = Get3DCoordinates(angle);
-	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	//cvCircle(color, *target, 2, cv::Scalar(target_pixel[1], target_pixel[2], target_pixel[0]));
 	if (textPos.x < target->x &&textPos.y < target->y) {
 		textPos.x = target->x + 2;
 		textPos.y = target->y + 2;
 	}
 
-	/* if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) { // TODO Nicht bewegen wenn kack Farbe
-		rgb_target[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
-		rgb_target[4] = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
+	/* if (abs(target_pixel[3] - target->x) < 40 && abs(target_pixel[4] - target->y) < 40) { // TODO Nicht bewegen wenn kack Farbe
+		target_pixel[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
+		target_pixel[4] = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
 	} */
 
 	rectangle(color, 
-		cv::Point(rgb_target[3], rgb_target[4]), 
-		cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), 
-		cv::Scalar(rgb_target[0], rgb_target[1], rgb_target[2]));
+		cv::Point(target_pixel.x, target_pixel.y), 
+		cv::Point(target_pixel.x + 50, target_pixel.y + 50), 
+		cv::Scalar(target_pixel.blue, target_pixel.green, target_pixel.red));
 
 	// Draw real coords:
 	CvFont font;

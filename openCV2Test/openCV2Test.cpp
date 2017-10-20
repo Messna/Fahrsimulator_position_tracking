@@ -26,10 +26,12 @@
 #include "opencv2\highgui.hpp"
 #include "opencv2\core\cvstd.hpp"
 #include "Server.h"
+#include "ColorPixel.h"
 
 using namespace std;
 
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
+map<string, ColorPixel> colorMap;
 
 int drawColor() {
 	if (!pointVec.empty()) {
@@ -170,7 +172,7 @@ static void onClick(const int event, const int x, const int y, int f, void*) {
 		int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
 		int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
 
-		colorMap["C" + to_string(colorMap.size())] = new int[5]{ blue, green, red, rec_x, rec_y };
+		colorMap["C" + to_string(colorMap.size())] = ColorPixel{ rec_x, rec_y, red, green, blue };
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		if (!pointVec.empty())

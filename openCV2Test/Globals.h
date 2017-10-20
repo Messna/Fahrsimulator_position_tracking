@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <map>
 #include <utility>
 
 #include "opencv2\opencv.hpp"
@@ -30,7 +29,6 @@ double* clickedPoint1 = nullptr;
 double* clickedPoint2 = nullptr;
 static vector<pair<string, double *>> pointVec;
 static bool run;
-map<string, int *> colorMap;
 
 cv::Mat color;
 IplImage* depth;
