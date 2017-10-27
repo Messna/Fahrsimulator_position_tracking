@@ -74,7 +74,7 @@ inline void region_growing(int* start, ColorPixel target_color_max, ColorPixel t
 	}
 }
 
-inline int* get_seed_coordinates3(ColorPixel target_color_max, ColorPixel target_color_min, const ColorPixel target_colorpixel) {
+inline int* findBestPixelForColorRange(ColorPixel target_color_max, ColorPixel target_color_min, const ColorPixel target_colorpixel) {
 	int* best_pos = nullptr;
 	long int min_error = generalTolerance * 3 * 255 + 0.5;
 
@@ -112,11 +112,11 @@ inline int* get_seed_coordinates3(ColorPixel target_color_max, ColorPixel target
 
 inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
 	const int range = toleranceFactor * 255 + 0.5;
-	ColorPixel rgb_min = ColorPixel{ max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
-	ColorPixel rgb_max = ColorPixel{ min(255, target_pixel.red + range), min(255, target_pixel.green + range), min(255, target_pixel.blue + range) };
+	const ColorPixel rgb_min = ColorPixel{ max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
+	const ColorPixel rgb_max = ColorPixel{ min(255, target_pixel.red + range), min(255, target_pixel.green + range), min(255, target_pixel.blue + range) };
 	cv::Point textPos(0, 0);
 
-	int* best_pos = get_seed_coordinates3(rgb_max, rgb_min, target_pixel);
+	int* best_pos = findBestPixelForColorRange(rgb_max, rgb_min, target_pixel);
 	cv::Point *target;
 	if (best_pos != nullptr)
 	{ 
