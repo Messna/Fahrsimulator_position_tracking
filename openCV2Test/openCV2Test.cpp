@@ -75,11 +75,13 @@ static void onClick(const int event, const int x, const int y, int f, void*) {
 		int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
 
 		colorMap["C" + to_string(colorMap.size() + 1)] = ColorPixel{ red, green, blue, rec_x, rec_y };
+		writer->AddPixel("C" + to_string(colorMap.size()), colorMap.at("C" + to_string(colorMap.size())));
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		if (!pointVec.empty())
 		{
 			pointVec.pop_back();
+			writer->RemovePixel("C" + to_string(colorMap.size()));
 			colorMap.erase(colorMap.find("C" + to_string(colorMap.size())));
 		}
 			
@@ -89,7 +91,7 @@ static void onClick(const int event, const int x, const int y, int f, void*) {
 int main() {
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 	cv::setMouseCallback("color image", onClick);
-
+	writer = new XMLWriter("Points.xml");
 	thread serverThread(&startServer);
 	cout << "Main thread" << endl;
 	while (true)

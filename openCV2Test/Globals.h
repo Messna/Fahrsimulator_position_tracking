@@ -6,6 +6,7 @@
 #include "opencv2\opencv.hpp"
 #include "KinectLayer.h"
 
+#include "XMLWriter.h"
 #define COLOR_WIDTH 1920    
 #define COLOR_HEIGHT 1080    
 #define DEPTH_WIDTH 512    
@@ -29,6 +30,8 @@ double* clickedPoint1 = nullptr;
 double* clickedPoint2 = nullptr;
 static vector<pair<string, double *>> pointVec;
 static bool run;
+
+XMLWriter* writer = nullptr;
 
 cv::Mat color;
 IplImage* depth;
