@@ -2,11 +2,11 @@
 
 #include "KinectLayer.h"
 
-double GetRadianFromDegree(double angleInDegree) {
+inline double GetRadianFromDegree(const double angleInDegree) {
 	return angleInDegree * PI / 180.0;
 }
 
-double GetDegreeFromRadian(double angleInRadian) {
+inline double GetDegreeFromRadian(const double angleInRadian) {
 	return angleInRadian * 180.0 / PI;
 }
 
