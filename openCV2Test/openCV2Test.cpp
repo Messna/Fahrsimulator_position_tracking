@@ -92,6 +92,7 @@ int main() {
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 	cv::setMouseCallback("color image", onClick);
 	writer = new XMLWriter("Points.xml");
+	colorMap = *(writer->getPixels());
 	thread serverThread(&startServer);
 	cout << "Main thread" << endl;
 	while (true)

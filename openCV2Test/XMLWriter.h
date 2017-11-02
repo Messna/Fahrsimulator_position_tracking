@@ -25,7 +25,7 @@ private:
 		int to = 0;
 		from = line.find(">");
 		to = line.find("</", from);
-		sub = line.substr(from+1, to);
+		sub = line.substr(from+1, to-(from+1));
 		return sub;
 	}
 	bool WriteToXml();
