@@ -90,7 +90,8 @@ bool XMLWriter::ReadFromXml() {
 					}
 				}
 				if (line.find("name") != std::string::npos) {
-					name = "C"+stoi(getValue(line));
+					//name = "C"+stoi(getValue(line));
+					name = getValue(line);
 				}
 				if (line.find("X") != std::string::npos) {
 					cp.x = stoi(getValue(line));
