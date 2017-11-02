@@ -25,11 +25,13 @@
 #include "opencv2\core\cvstd.hpp"
 #include "Server.h"
 #include "ColorPixel.h"
+#include "XMLWriter.h"
 
 using namespace std;
 
 BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 map<string, ColorPixel> colorMap;
+XMLWriter* writer = nullptr;
 
 int drawColor() {
 	if (!pointVec.empty()) {
@@ -51,7 +53,13 @@ int drawColor() {
 	return 0;
 }
 
-static void addPoint(const int x, const int y) {
+static void addToColorMap(const ColorPixel pixel)
+{
+	colorMap["C" + to_string(colorMap.size() + 1)] = pixel;
+	writer->AddPixel("C" + to_string(colorMap.size()), colorMap.at("C" + to_string(colorMap.size())));
+}
+
+static ColorPixel addPoint(const int x, const int y) {
 	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
 
 	const uint8_t blue = uint8_t(color_val[0]), // B
@@ -72,8 +80,7 @@ static void addPoint(const int x, const int y) {
 	int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
 	int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
 
-	colorMap["C" + to_string(colorMap.size() + 1)] = ColorPixel{ red, green, blue, rec_x, rec_y };
-	writer->AddPixel("C" + to_string(colorMap.size()), colorMap.at("C" + to_string(colorMap.size())));
+	return ColorPixel{ red, green, blue, rec_x, rec_y };
 }
 static void removePoint(const int x, const int y) {
 	if (!pointVec.empty()) {
@@ -85,11 +92,10 @@ static void removePoint(const int x, const int y) {
 
 static void onClick(const int event, const int x, const int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
-		addPoint(x, y);
+		addToColorMap(addPoint(x, y));
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		removePoint(x, y);
-			
 	}
 }
 
@@ -97,8 +103,10 @@ int main() {
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 	cv::setMouseCallback("color image", onClick);
 
-	kinect.setRGB();
-	color = kinect.rgbImage;
+	kinect.setDepth();
+	kinect.setRGB(color);
+	while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) // Check if Matrix is filled now
+		kinect.setRGB(color);
 
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
@@ -111,16 +119,12 @@ int main() {
 	{
 		drawColor();
 
-		kinect.setRGB();
-
+		kinect.setRGB(color);
 		//depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.cols, kinect.depthImage.rows);
-		color = kinect.rgbImage;
 
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
-
-
 	}
 
 	run = false;

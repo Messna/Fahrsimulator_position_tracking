@@ -9,20 +9,17 @@
 #include <string>
 #include <iostream>
 #include <thread>
-#include <vector>
 
 // Need to link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
 #define REVBUFFLEN 8142
+
 
 int startServer() {
 	// Initialize Winsock.
 	bool run = true;
 
 	char recvBuffer[REVBUFFLEN];
-	std::vector<std::string> points = { "P1:127.531/48.848/17.8"
-		, "P2:83.939/392.19/3.123"
-		, "P3:91.930/201.83/91.872" };
 	WSADATA wsaData;
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR)
@@ -33,7 +30,7 @@ int startServer() {
 	//----------------------
 	// Create a SOCKET for listening for
 	// incoming connection requests.
-	SOCKET ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	const SOCKET ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (ListenSocket == INVALID_SOCKET)
 	{
 		wprintf(L"socket failed with error: %ld\n", WSAGetLastError());
@@ -67,16 +64,13 @@ int startServer() {
 		WSACleanup();
 		return 1;
 	}
-	wprintf(L"Waiting for client to connect...\n");
-
-	//----------------------
-	// Accept the connection.
 
 	std::string msg = "Hallo there!";
 
 	while (run)
 	{
-		SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
+		wprintf(L"Waiting for client to connect...\n");
+		const SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
 
 		if (AcceptSocket == INVALID_SOCKET)
 		{
@@ -85,20 +79,32 @@ int startServer() {
 			WSACleanup();
 			return 1;
 		}
+
 		wprintf(L"Client connected.\n");
 
-		recv(AcceptSocket, recvBuffer, REVBUFFLEN, 0);
-		std::cout << "Received: " << std::string(recvBuffer) << std::endl;
-		if (std::string(recvBuffer).compare("send_points") == 0) {
-			for (auto s : points) {
+		while (true)
+		{
+			recv(AcceptSocket, recvBuffer, REVBUFFLEN, 0);
+			cout << "Received: " << string(recvBuffer) << endl;
+			if (string(recvBuffer).compare("send_points") == 0) {
+				string s = "";
+				for (const auto p : realCoordsMap) {
+					// Format: "P1:127.531/48.848/17.8"
+					s += p.first + ":" + to_string(p.second[0]) + "/" + to_string(p.second[1]) + "/" + to_string(p.second[2]) + "\n";
+				}
 				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
+				cout << "Sent data" << endl;
 			}
+//			else { break; }
+//			for (int i = 0; i < REVBUFFLEN; i++)
+//			{
+//				recvBuffer[i] = '\0';
+//			}
 		}
 	}
 	// No longer need server socket
 	closesocket(ListenSocket);
-	std::cout << "Connection closed" << std::endl;
-	cin;
+	cout << "Connection closed" << endl;
 	WSACleanup();
 	return 0;
 }

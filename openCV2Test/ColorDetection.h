@@ -149,6 +149,15 @@ inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown"
 		cv::Point(target->x + 50, target->y + 50),
 		cv::Scalar(255, 255, 255));
 
+	// Put real coords in map for Unity
+	string ps = s;
+	ps[0] = 'P';
+	map<string, double *> testCoordsMap = map<string, double *>();
+	realCoordsMap[ps] = new double[3];
+	realCoordsMap.at(ps)[0] = realcoord[0];
+	realCoordsMap.at(ps)[1] = realcoord[1];
+	realCoordsMap.at(ps)[2] = realcoord[2];
+
 	// Draw real coords:
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
@@ -157,6 +166,7 @@ inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown"
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
 	cv::putText(color, outputStr.c_str(), textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
+	
 
 	delete target;
 	delete[] best_pos;

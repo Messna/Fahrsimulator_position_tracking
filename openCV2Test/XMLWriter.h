@@ -62,8 +62,8 @@ bool XMLWriter::WriteToXml() {
 	for (auto e : *points) {
 		out << "<point>\n";
 		out << "\t<name>" << e.first << "</name>\n";
-		out << "\t<X>" << e.second.x << "</X>\n";
-		out << "\t<Y>" << e.second.y << "</Y>\n";
+		out << "\t<X>" << e.second.x + 25 << "</X>\n";
+		out << "\t<Y>" << e.second.y + 25 << "</Y>\n";
 		out << "\t<R>" << e.second.red << "</R>\n";
 		out << "\t<G>" << e.second.green << "</G>\n";
 		out << "\t<B>" << e.second.blue << "</B>\n";

@@ -10,8 +10,6 @@
 
 #pragma once
 
-
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -131,7 +129,7 @@ public:
 		depthImage = cv::Mat(depthHeight, depthWidth, CV_16UC1);
 		for (int i = 0; i < depthImage.total(); i++) {
 			double rate = depthBuffer[i] / (double)maxDepth;
-			depthImage.at<UINT16>(i) = (raw) ? depthBuffer[i] : (UINT16)(255 * 255 * rate); // [0, 65535]
+			depthImage.at<UINT16>(i) = (raw) ? depthBuffer[i] : static_cast<UINT16>(255 * 255 * rate); // [0, 65535]
 		}
 	}
 	int getDepthForPixel(int x, int y) {
