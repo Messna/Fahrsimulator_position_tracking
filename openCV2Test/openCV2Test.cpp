@@ -96,6 +96,10 @@ static void onClick(const int event, const int x, const int y, int f, void*) {
 int main() {
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 	cv::setMouseCallback("color image", onClick);
+
+	kinect.setRGB();
+	color = kinect.rgbImage;
+
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
 	for (auto p : colorMap) {
@@ -105,15 +109,18 @@ int main() {
 	cout << "Main thread" << endl;
 	while (true)
 	{
+		drawColor();
+
 		kinect.setRGB();
-	
+
 		//depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.cols, kinect.depthImage.rows);
 		color = kinect.rgbImage;
-		drawColor();
-		
+
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
+
+
 	}
 
 	run = false;
