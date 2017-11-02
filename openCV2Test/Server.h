@@ -46,10 +46,11 @@ int startServer() {
 	sockaddr_in service;
 	service.sin_family = AF_INET;
 	service.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//string ip = "127.0.0.1";
+	//InetPton(AF_INET, LPCTSTR(ip.c_str()), &service.sin_addr.s_addr);
 	service.sin_port = htons(27015);
 
-	if (::bind(ListenSocket,
-		reinterpret_cast<SOCKADDR *>(& service), sizeof(service)) == SOCKET_ERROR)
+	if (::bind(ListenSocket, reinterpret_cast<SOCKADDR *>(& service), sizeof service) == SOCKET_ERROR)
 	{
 		wprintf(L"bind failed with error: %ld\n", WSAGetLastError());
 		closesocket(ListenSocket);
@@ -84,18 +85,14 @@ int startServer() {
 			WSACleanup();
 			return 1;
 		}
-		else
-		{
-			wprintf(L"Client connected.\n");
+		wprintf(L"Client connected.\n");
 
-			recv(AcceptSocket, recvBuffer, REVBUFFLEN, 0);
-			std::cout << "Received: " << std::string(recvBuffer) << std::endl;
-			if (std::string(recvBuffer).compare("send_points") == 0) {
-				for (auto s : points) {
-					send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
-				}
+		recv(AcceptSocket, recvBuffer, REVBUFFLEN, 0);
+		std::cout << "Received: " << std::string(recvBuffer) << std::endl;
+		if (std::string(recvBuffer).compare("send_points") == 0) {
+			for (auto s : points) {
+				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
 			}
-
 		}
 	}
 	// No longer need server socket
