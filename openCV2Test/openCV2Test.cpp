@@ -51,39 +51,44 @@ int drawColor() {
 	return 0;
 }
 
+static void addPoint(const int x, const int y) {
+	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
+
+	const uint8_t blue = uint8_t(color_val[0]), // B
+		green = uint8_t(color_val[1]), // G
+		red = uint8_t(color_val[2]); // R
+									 //	alpha = uint8_t(colorVal[3]); // Alpha
+
+	cout << "Color: B: " << static_cast<int>(blue) << " G: " << static_cast<int>(green) << " R: " << static_cast<int>(red) << endl;
+
+	double* colorAngleArr = GetAngleFromColorIndex(x, y);
+	double* rdWorldPos = Get3DCoordinates(colorAngleArr);
+	rdWorldPos[3] = x;
+	rdWorldPos[4] = y;
+	stringstream tmp;
+	tmp << "P" << pointVec.size() + 1 << "(x: " << x << " y: " << y << ")";
+	pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
+
+	int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
+	int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
+
+	colorMap["C" + to_string(colorMap.size() + 1)] = ColorPixel{ red, green, blue, rec_x, rec_y };
+	writer->AddPixel("C" + to_string(colorMap.size()), colorMap.at("C" + to_string(colorMap.size())));
+}
+static void removePoint(const int x, const int y) {
+	if (!pointVec.empty()) {
+		pointVec.pop_back();
+		writer->RemovePixel("C" + to_string(colorMap.size()));
+		colorMap.erase(colorMap.find("C" + to_string(colorMap.size())));
+	}
+}
 
 static void onClick(const int event, const int x, const int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
-		cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
-
-		const uint8_t blue = uint8_t(color_val[0]), // B
-			green = uint8_t(color_val[1]), // G
-			red = uint8_t(color_val[2]); // R
-		//	alpha = uint8_t(colorVal[3]); // Alpha
-
-		cout << "Color: B: " << static_cast<int>(blue) << " G: " << static_cast<int>(green) << " R: " << static_cast<int>(red) << endl;
-
-		double* colorAngleArr = GetAngleFromColorIndex(x, y);
-		double* rdWorldPos = Get3DCoordinates(colorAngleArr);
-		rdWorldPos[3] = x;
-		rdWorldPos[4] = y;
-		stringstream tmp;
-		tmp << "P" << pointVec.size() + 1 << "(x: " << x << " y: " << y << ")";
-		pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
-
-		int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
-		int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
-
-		colorMap["C" + to_string(colorMap.size() + 1)] = ColorPixel{ red, green, blue, rec_x, rec_y };
-		writer->AddPixel("C" + to_string(colorMap.size()), colorMap.at("C" + to_string(colorMap.size())));
+		addPoint(x, y);
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
-		if (!pointVec.empty())
-		{
-			pointVec.pop_back();
-			writer->RemovePixel("C" + to_string(colorMap.size()));
-			colorMap.erase(colorMap.find("C" + to_string(colorMap.size())));
-		}
+		removePoint(x, y);
 			
 	}
 }
@@ -93,6 +98,9 @@ int main() {
 	cv::setMouseCallback("color image", onClick);
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
+	for (auto p : colorMap) {
+		addPoint(p.second.x, p.second.y);
+	}
 	thread serverThread(&startServer);
 	cout << "Main thread" << endl;
 	while (true)
