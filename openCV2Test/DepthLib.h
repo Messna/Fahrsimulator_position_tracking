@@ -1,29 +1,31 @@
 #pragma once
 
-double GetRadianFromDegree(double angleInDegree) {
+#include "KinectLayer.h"
+
+inline double GetRadianFromDegree(const double angleInDegree) {
 	return angleInDegree * PI / 180.0;
 }
 
-double GetDegreeFromRadian(double angleInRadian) {
+inline double GetDegreeFromRadian(const double angleInRadian) {
 	return angleInRadian * 180.0 / PI;
 }
 
 //return 2 angles, for horizontal (x) and vertical (y)
-double* GetAngleFromColorIndex(int colorX, int colorY) {
-	double coordMidX = COLOR_WIDTH / 2.0 - 0.5;
-	double coordMidY = COLOR_HEIGHT / 2.0 - 0.5;
+double* GetAngleFromColorIndex(const int colorX, const int colorY) {
+	const double coordMidX = COLOR_WIDTH / 2.0 - 0.5;
+	const double coordMidY = COLOR_HEIGHT / 2.0 - 0.5;
 	double* returnArr = new double[2]{ -100, -100 };
 
-	double width = tan(GetRadianFromDegree(fovColorX / 2.0)) * 2;
-	double height = tan(GetRadianFromDegree(fovColorY / 2.0)) * 2;
-	double widthStep = width / (COLOR_WIDTH - 1);
-	double heightStep = height / (COLOR_HEIGHT - 1);
+	const double width = tan(GetRadianFromDegree(fovColorX / 2.0)) * 2;
+	const double height = tan(GetRadianFromDegree(fovColorY / 2.0)) * 2;
+	const double widthStep = width / (COLOR_WIDTH - 1);
+	const double heightStep = height / (COLOR_HEIGHT - 1);
 
-	double centeredX = colorX - coordMidX;
-	double centeredY = colorY - coordMidY;
+	const double centeredX = colorX - coordMidX;
+	const double centeredY = colorY - coordMidY;
 
-	double trueAngleX = GetDegreeFromRadian(atan(centeredX * widthStep));
-	double trueAngleY = GetDegreeFromRadian(atan(centeredY * heightStep));
+	const double trueAngleX = GetDegreeFromRadian(atan(centeredX * widthStep));
+	const double trueAngleY = GetDegreeFromRadian(atan(centeredY * heightStep));
 
 	//cout << " for coords (" << colorX << ";" << colorY << ") the degrees are (" << trueAngleX << ";" << trueAngleY << ")" << endl;
 
@@ -32,23 +34,23 @@ double* GetAngleFromColorIndex(int colorX, int colorY) {
 	return returnArr;
 }
 
-double* Get3DCoordinates(double* angles, int** depthArr) {
+inline double* Get3DCoordinates(double* angles) {
 
 	double* realWorldCoords = new double[5]{ -1000, -1000, -1000, 1, 1 };
 
-	double colorAngleX = angles[0];
-	double colorAngleY = angles[1];
+	const double colorAngleX = angles[0];
+	const double colorAngleY = angles[1];
 
-	double width = tan(GetRadianFromDegree(fovDepthX / 2.0)) * 2;
-	double height = tan(GetRadianFromDegree(fovDepthY / 2.0)) * 2;
-	double widthStep = width / (DEPTH_WIDTH - 1);
-	double heightStep = height / (DEPTH_HEIGHT - 1);
+	const double width = tan(GetRadianFromDegree(fovDepthX / 2.0)) * 2;
+	const double height = tan(GetRadianFromDegree(fovDepthY / 2.0)) * 2;
+	const double widthStep = width / (DEPTH_WIDTH - 1);
+	const double heightStep = height / (DEPTH_HEIGHT - 1);
 
-	double coordMidX = DEPTH_WIDTH / 2.0 - 0.5;
-	double coordMidY = DEPTH_HEIGHT / 2.0 - 0.5;
+	const double coordMidX = DEPTH_WIDTH / 2.0 - 0.5;
+	const double coordMidY = DEPTH_HEIGHT / 2.0 - 0.5;
 
-	double distX = tan(GetRadianFromDegree(colorAngleX));
-	double distY = tan(GetRadianFromDegree(colorAngleY));
+	const double distX = tan(GetRadianFromDegree(colorAngleX));
+	const double distY = tan(GetRadianFromDegree(colorAngleY));
 
 
 	//calc index position in depth array
@@ -57,7 +59,7 @@ double* Get3DCoordinates(double* angles, int** depthArr) {
 
 	//check range of index (is in FoV)
 	if (idxDepthX >= 0 && idxDepthX < DEPTH_WIDTH && idxDepthY >= 0 && idxDepthY < DEPTH_HEIGHT) {
-		double depthValZ = depthArr[idxDepthX][idxDepthY];
+		double depthValZ = kinect.getDepthForPixel(idxDepthX, idxDepthY);
 
 		double realWorldZ = depthValZ / 10.0; //convert from mm to cm
 		double realWorldX = tan(GetRadianFromDegree(colorAngleX)) * realWorldZ;
@@ -71,7 +73,7 @@ double* Get3DCoordinates(double* angles, int** depthArr) {
 	return realWorldCoords;
 }
 
-double GetLength(double* p1, double* p2) {
+inline double GetLength(double* p1, double* p2) {
 	double l1 = (p2[0] - p1[0]) * (p2[0] - p1[0]);
 	double l2 = (p2[1] - p1[1]) * (p2[1] - p1[1]);
 	double l3 = (p2[2] - p1[2]) * (p2[2] - p1[2]);

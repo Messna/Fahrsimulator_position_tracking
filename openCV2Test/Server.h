@@ -1,4 +1,5 @@
-
+#pragma once
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #ifndef UNICODE
 #define UNICODE
@@ -9,7 +10,6 @@
 #include <string>
 #include <iostream>
 #include <thread>
-#include <vector>
 
 // Need to link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
@@ -21,9 +21,6 @@ int startServer() {
 	bool run = true;
 
 	char recvBuffer[REVBUFFLEN];
-	std::vector<std::string> points = { "P1:127.531/48.848/17.8"
-		, "P2:83.939/392.19/3.123"
-		, "P3:91.930/201.83/91.872" };
 	WSADATA wsaData;
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR)
@@ -34,8 +31,7 @@ int startServer() {
 	//----------------------
 	// Create a SOCKET for listening for
 	// incoming connection requests.
-	SOCKET ListenSocket;
-	ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	const SOCKET ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (ListenSocket == INVALID_SOCKET)
 	{
 		wprintf(L"socket failed with error: %ld\n", WSAGetLastError());
@@ -48,10 +44,11 @@ int startServer() {
 	sockaddr_in service;
 	service.sin_family = AF_INET;
 	service.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//string ip = "127.0.0.1";
+	//InetPton(AF_INET, LPCTSTR(ip.c_str()), &service.sin_addr.s_addr);
 	service.sin_port = htons(27015);
 
-	if (::bind(ListenSocket,
-		(SOCKADDR *)& service, sizeof(service)) == SOCKET_ERROR)
+	if (::bind(ListenSocket, reinterpret_cast<SOCKADDR *>(& service), sizeof service) == SOCKET_ERROR)
 	{
 		wprintf(L"bind failed with error: %ld\n", WSAGetLastError());
 		closesocket(ListenSocket);
@@ -68,19 +65,13 @@ int startServer() {
 		WSACleanup();
 		return 1;
 	}
-	//----------------------
-	// Create a SOCKET for accepting incoming requests.
-	SOCKET AcceptSocket;
-	wprintf(L"Waiting for client to connect...\n");
-
-	//----------------------
-	// Accept the connection.
 
 	std::string msg = "Hallo there!";
 
 	while (run)
 	{
-		AcceptSocket = accept(ListenSocket, NULL, NULL);
+		wprintf(L"Waiting for client to connect...\n");
+		const SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
 
 		if (AcceptSocket == INVALID_SOCKET)
 		{
@@ -98,17 +89,18 @@ int startServer() {
 			cout << "Received: " << string(recvBuffer) << endl;
 			if (string(recvBuffer).compare("send_points") == 0) {
 				string s = "";
-				for (auto p : pointMap) {
+				for (const auto p : realCoordsMap) {
+					// Format: "P1:127.531/48.848/17.8"
 					s += p.first + ":" + to_string(p.second[0]) + "/" + to_string(p.second[1]) + "/" + to_string(p.second[2]) + "\n";
 				}
 				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
 				cout << "Sent data" << endl;
 			}
-			else { break; }
-			for(int i = 0; i < REVBUFFLEN; i++)
-			{
-				recvBuffer[i] = '\0';
-			}
+//			else { break; }
+//			for (int i = 0; i < REVBUFFLEN; i++)
+//			{
+//				recvBuffer[i] = '\0';
+//			}
 		}
 	}
 	// No longer need server socket

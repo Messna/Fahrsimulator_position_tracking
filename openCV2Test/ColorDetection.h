@@ -1,159 +1,171 @@
 #pragma once
 
-#include "opencv2\opencv.hpp"
+#include "opencv2/opencv.hpp"
+#include "ColorPixel.h"
 
 using namespace std;
 
-bool has_target_color(double* target_color_max, double* target_color_min, CvScalar& color_pxl) {
+inline bool has_target_color(ColorPixel target_color_max, ColorPixel target_color_min, cv::Vec4b& color_pxl) {
+	const uint8_t blue = uint8_t(color_pxl[0]),
+		green = uint8_t(color_pxl[1]),
+		red = uint8_t(color_pxl[2]),
+		alpha = uint8_t(color_pxl[3]);
 
-	uint8_t green = 0, blue = 0, red = 0, c4 = 0;
-	green = uint8_t(color_pxl.val[0]),
-		blue = uint8_t(color_pxl.val[1]),
-		red = uint8_t(color_pxl.val[2]),
-		c4 = uint8_t(color_pxl.val[3]);
-	//target_color = RBG
-
-	if (red >= target_color_min[0] && red <= target_color_max[0] &&
-		green >= target_color_min[1] && green <= target_color_max[1] &&
-		blue >= target_color_min[2] && blue <= target_color_max[2]) {
+	if (blue >= target_color_min.blue && blue <= target_color_max.blue &&
+		green >= target_color_min.green && green <= target_color_max.green &&
+		red >= target_color_min.red && red <= target_color_max.red) {
 		return true;
 	}
 
 	return false;
 }
 
-void findNeighbors(int x, int y, double* target_color_max,
-	double* target_color_min,
-	std::map<std::pair<int, int>, bool>& stack) {
+inline void findNeighbors(int x, int y, ColorPixel target_color_max,
+		ColorPixel target_color_min,
+		std::map<string, bool>& hashSet,
+		std::vector<std::pair<int, int>>& region) {
 
-	// TODO FIND ERROR
-	if ((stack.find(std::make_pair(x, y)) != stack.end()) &&
-		has_target_color(target_color_max, target_color_min, cvGet2D(color, y, x / 1.33335))) {
-		stack[make_pair(x, y)] = true;
+	const string xyKey = x + "|" + y;
+	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
+	//cout << (int)color_val[0] << " " << (int)color_val[1] << " " << (int)color_val[2] << endl;
+
+	if (hashSet.find(xyKey) != hashSet.end() &&
+		has_target_color(target_color_max, target_color_min, color_val)) {
+		hashSet[xyKey] = true;
+		region.push_back(  std::make_pair(x, y));
 
 		if (x > 1) {
-			findNeighbors(x - 1, y, target_color_max, target_color_min, stack);
+			findNeighbors(x - 1, y, target_color_max, target_color_min, hashSet, region);
 		}
 		if (y > 1) {
-			findNeighbors(x, y - 1, target_color_max, target_color_min, stack);
+			findNeighbors(x, y - 1, target_color_max, target_color_min, hashSet, region);
 		}
-		if (x < color->width - 1) {
-			findNeighbors(x + 1, y, target_color_max, target_color_min, stack);
+		if (x < COLOR_WIDTH - 1) {
+			findNeighbors(x + 1, y, target_color_max, target_color_min, hashSet, region);
 		}
-		if (y < color->height - 1) {
-			findNeighbors(x, y + 1, target_color_max, target_color_min, stack);
+		if (y < COLOR_HEIGHT - 1) {
+			findNeighbors(x, y + 1, target_color_max, target_color_min, hashSet, region);
 		}
 	}
 }
 
-void region_growing(int* start, double* target_color_max, double* target_color_min) {
-	map<pair<int, int>, bool> stack;
+inline void region_growing(int* start, ColorPixel target_color_max, ColorPixel target_color_min) {
+	map<string, bool> hashSet;
+	vector<pair<int, int>> region;
 
 	try
 	{
-		findNeighbors(start[0], start[1], target_color_max, target_color_min, stack);
-
+		findNeighbors(start[0], start[1], target_color_max, target_color_min, hashSet, region);
 	}
 	catch (const exception &e)
 	{
-		cout << "Exception at findNeighbors-call" << endl;
+		cout << "Exception at findNeighbors-call: " << e.what() << endl;
 	}
 	long int sum_x = 0;
 	long int sum_y = 0;
-	if (!stack.empty()) {
-		for (auto a : stack) {
-			sum_x += a.first.first;
-			sum_y += a.first.second;
+	if (!region.empty()) {
+		for (const auto a : region) {
+			sum_x += a.first;
+			sum_y += a.second;
+			cv::circle(color, cv::Point(a.first, a.second), 3, cv::Scalar(0, 255, 0));
 		}
-		start[0] = sum_x / stack.size();
-		start[1] = sum_y / stack.size();
+		start[0] = sum_x / hashSet.size() + 0.5;
+		start[1] = sum_y / hashSet.size() + 0.5;
 	}
 }
 
-int* get_seed_coordinates3(double* target_color_max, double* target_color_min, int* target_color) {
-	int* best_pos = new int[2]{ 1, 1 };
-	long int min_error = 255 * 255 * 255;
+inline int* findBestPixelForColorRange(ColorPixel target_color_max, ColorPixel target_color_min, const ColorPixel target_colorpixel) {
+	int* best_pos = nullptr;
+	long int min_error = generalTolerance * 3 * 255 + 0.5;
 
-	for (int x = target_color[3]; x < target_color[3]+50; x++) {
-		for (int y = target_color[4]; y < target_color[4]+50; y++) {
-			CvScalar color_pxl = cvGet2D(color, y, x);
-			uint8_t green = uint8_t(color_pxl.val[0]),
-				blue = uint8_t(color_pxl.val[1]),
-				red = uint8_t(color_pxl.val[2]),
-				c4 = uint8_t(color_pxl.val[3]);
-			//target_color = RBG
+	for (int x = target_colorpixel.x - 24; x < target_colorpixel.x + 24; x++) {
+		if (x < 0 || x >= COLOR_WIDTH) continue;
 
-			if (red >= target_color_min[0] && red <= target_color_max[0] &&
-				green >= target_color_min[1] && green <= target_color_max[1] &&
-				blue >= target_color_min[2] && blue <= target_color_max[2]) {
+		for (int y = target_colorpixel.y - 24; y < target_colorpixel.y + 24; y++) {
+			if (y < 0 || y >= COLOR_HEIGHT) continue;
 
-				int x2 = x*1.333;
+			cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
+			const uint8_t blue = uint8_t(color_val[0]),
+				green = uint8_t(color_val[1]),
+				red = uint8_t(color_val[2]),
+				alpha = uint8_t(color_val[3]);
 
-				if (abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]) < min_error) {
-					min_error = abs(red - target_color[0]) * abs(blue - target_color[1]) * abs(green - target_color[2]);
-					best_pos[0] = x2;
+			if (blue >= target_color_min.blue && blue <= target_color_max.blue &&
+				green >= target_color_min.green && green <= target_color_max.green &&
+				red >= target_color_min.red && red <= target_color_max.red) {
+
+				if (abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red) < min_error) {
+					min_error = abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red);
+					if (best_pos == nullptr) best_pos = new int[2];
+					best_pos[0] = x;
 					best_pos[1] = y;
 				}
 			}
 		}
 	}
-
+	if(best_pos != nullptr)
 	region_growing(best_pos, target_color_max, target_color_min);
 
 	return best_pos;
 }
 
-
-
-void findColorAndMark(int* rgb_target, string s = "unknown", double toleranceFactor = generalTolerance) {
-
-	double range = toleranceFactor * 255;
-	double* rgb_min = new double[3]{ max(0.0, rgb_target[0] - range), max(0.0, rgb_target[1] - range), max(0.0, rgb_target[2] - range) };
-	double* rgb_max = new double[3]{ min(255.0, rgb_target[0] + range), min(255.0, rgb_target[1] + range), min(255.0, rgb_target[2] + range) };
+inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
+	const int range = toleranceFactor * 255 + 0.5;
+	const ColorPixel rgb_min = ColorPixel{ max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
+	const ColorPixel rgb_max = ColorPixel{ min(255, target_pixel.red + range), min(255, target_pixel.green + range), min(255, target_pixel.blue + range) };
 	cv::Point textPos(0, 0);
 
-	int * a = get_seed_coordinates3(rgb_max, rgb_min, rgb_target);
-	cv::Mat output_frame(cv::cvarrToMat(color));
+	int* best_pos = findBestPixelForColorRange(rgb_max, rgb_min, target_pixel);
+	cv::Point *target;
+	if (best_pos != nullptr)
+	{ 
+		target = new cv::Point(int(0.5 + best_pos[0]), best_pos[1]);
+	}else
+	{
+		target = new cv::Point(target_pixel.x, target_pixel.y);
+		best_pos = new int[2];
+		best_pos[0] = target_pixel.x;
+		best_pos[1] = target_pixel.y;
+	}
+	cv::circle(color, *target, 1, cv::Scalar(0, 0, 0));
+	double* angle = GetAngleFromColorIndex(best_pos[0], best_pos[1]);
+	double* realcoord = Get3DCoordinates(angle);
 
-
-	cv::Point *target = new cv::Point(int(0.5 + a[0] * 0.75), a[1]);
-
-	cvCircle(color, *target, 1, cv::Scalar(0, 0, 0));
-	double* angle = GetAngleFromColorIndex(a[0], a[1]);
-	double* realcoord = Get3DCoordinates(angle, depthImg);
-	//cvCircle(color, *target, 2, cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
 	if (textPos.x < target->x &&textPos.y < target->y) {
 		textPos.x = target->x + 2;
 		textPos.y = target->y + 2;
 	}
-	
 
+	target_pixel.x = target->x;
+	target_pixel.y = target->y;
 
-	cvRectangle(color, cv::Point(rgb_target[3], rgb_target[4]), cv::Point(rgb_target[3] + 50, rgb_target[4] + 50), cv::Scalar(rgb_target[1], rgb_target[2], rgb_target[0]));
+	if (abs(target_pixel.x - target->x) < 25 && abs(target_pixel.y - target->y) < 25) {
+		target->x = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
+		target->y = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
+	} 
+	rectangle(color, 
+		cv::Point(target->x, target->y),
+		cv::Point(target->x + 50, target->y + 50),
+		cv::Scalar(255, 255, 255));
+
+	// Put real coords in map for Unity
 	string ps = s;
 	ps[0] = 'P';
-	pointMap.at(ps)[0] = realcoord[0];
-	pointMap.at(ps)[1] = realcoord[1];
-	pointMap.at(ps)[2] = realcoord[2];
+	map<string, double *> testCoordsMap = map<string, double *>();
+	realCoordsMap[ps] = new double[3];
+	realCoordsMap.at(ps)[0] = realcoord[0];
+	realCoordsMap.at(ps)[1] = realcoord[1];
+	realCoordsMap.at(ps)[2] = realcoord[2];
 
-	if (abs(rgb_target[3] - target->x) < 40 && abs(rgb_target[4] - target->y) < 40) {
-		rgb_target[3] = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
-		rgb_target[4] = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
-	}
+	// Draw real coords:
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
 	ostringstream os;
 	os << realcoord[2];
-	string str = os.str();
-	string outputStr = s.append(" ").append(str);
+	std::string str = os.str();
+	std::string outputStr = s.append(" ").append(str);
+	cv::putText(color, outputStr.c_str(), textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
 
-	cvPutText(color, outputStr.c_str(), textPos, &font, cv::Scalar(0.0, 0.0, 0.0));
-	//std::cout << result[0][1] << " " << result[0][0] << std::endl;
-	//std::cout << result.size() << std::endl;
-
-	cvCircle(color, cv::Point(320, 240), 3, cv::Scalar(0, 255, 0));
-	delete[] rgb_max;
-	delete[] rgb_min;
 	delete target;
-	delete[] a;
+	delete[] best_pos;
 }
