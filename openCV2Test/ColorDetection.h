@@ -29,7 +29,7 @@ inline void findNeighbors(int x, int y, ColorPixel target_color_max,
 	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
 	//cout << (int)color_val[0] << " " << (int)color_val[1] << " " << (int)color_val[2] << endl;
 
-	if (hashSet.find(xyKey) == hashSet.end() &&
+	if (hashSet.find(xyKey) != hashSet.end() &&
 		has_target_color(target_color_max, target_color_min, color_val)) {
 		hashSet[xyKey] = true;
 		region.push_back(  std::make_pair(x, y));
@@ -109,7 +109,6 @@ inline int* findBestPixelForColorRange(ColorPixel target_color_max, ColorPixel t
 	return best_pos;
 }
 
-
 inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
 	const int range = toleranceFactor * 255 + 0.5;
 	const ColorPixel rgb_min = ColorPixel{ max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
@@ -161,12 +160,11 @@ inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown"
 	// Draw real coords:
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
-	std::ostringstream os;
+	ostringstream os;
 	os << realcoord[2];
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
 	cv::putText(color, outputStr.c_str(), textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
-	
 
 	delete target;
 	delete[] best_pos;

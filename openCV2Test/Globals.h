@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <utility>
-
 #include "opencv2\opencv.hpp"
 #include "KinectLayer.h"
 
