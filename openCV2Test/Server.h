@@ -96,11 +96,11 @@ int startServer() {
 				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
 				cout << "Sent data" << endl;
 			}
-//			else { break; }
-//			for (int i = 0; i < REVBUFFLEN; i++)
-//			{
-//				recvBuffer[i] = '\0';
-//			}
+			else { break; }
+			for (int i = 0; i < REVBUFFLEN; i++)
+			{
+				recvBuffer[i] = '\0';
+			}
 		}
 	}
 	// No longer need server socket

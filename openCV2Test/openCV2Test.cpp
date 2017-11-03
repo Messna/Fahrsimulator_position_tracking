@@ -1,5 +1,3 @@
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-
 #include "stdafx.h"
 
 #include <winsock2.h>
@@ -86,7 +84,7 @@ static ColorPixel addPoint(const int x, const int y) {
 	return ColorPixel{ red, green, blue, rec_x, rec_y };
 }
 
-static void removePoint(const int x, const int y) {
+static void removePoint() {
 	if (!pointVec.empty()) {
 		pointVec.pop_back();
 		writer->RemovePixel("C" + to_string(colorMap.size()));
@@ -99,7 +97,7 @@ static void onClick(const int event, const int x, const int y, int f, void*) {
 		addToColorMap(addPoint(x, y));
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
-		removePoint(x, y);
+		removePoint();
 	}
 }
 
@@ -132,7 +130,7 @@ int main() {
 	}
 
 	run = false;
-	//serverThread.join();
+	serverThread.join();
 
 	cv::destroyAllWindows();
 	return 0;

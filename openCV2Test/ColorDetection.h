@@ -20,57 +20,53 @@ inline bool has_target_color(ColorPixel target_color_max, ColorPixel target_colo
 	return false;
 }
 
-inline void findNeighbors(int x, int y, ColorPixel target_color_max,
+inline void findNeighbors(
+		int x, 
+		int y, 
+		ColorPixel target_color_max,
 		ColorPixel target_color_min,
-		std::map<string, bool>& hashSet,
-		std::vector<std::pair<int, int>>& region) {
+		std::map<string, bool>& already_checked_pixel,
+		std::vector<std::pair<int, int>>& color_region) {
 
 	const string xyKey = x + "|" + y;
 	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
-	//cout << (int)color_val[0] << " " << (int)color_val[1] << " " << (int)color_val[2] << endl;
 
-	if (hashSet.find(xyKey) != hashSet.end() &&
-		has_target_color(target_color_max, target_color_min, color_val)) {
-		hashSet[xyKey] = true;
-		region.push_back(  std::make_pair(x, y));
+	if (already_checked_pixel.find(xyKey) == already_checked_pixel.end() &&
+			has_target_color(target_color_max, target_color_min, color_val)) {
+
+		already_checked_pixel[xyKey] = true;
+		color_region.push_back(std::make_pair(x, y));
 
 		if (x > 1) {
-			findNeighbors(x - 1, y, target_color_max, target_color_min, hashSet, region);
+			findNeighbors(x - 1, y, target_color_max, target_color_min, already_checked_pixel, color_region);
 		}
 		if (y > 1) {
-			findNeighbors(x, y - 1, target_color_max, target_color_min, hashSet, region);
+			findNeighbors(x, y - 1, target_color_max, target_color_min, already_checked_pixel, color_region);
 		}
 		if (x < COLOR_WIDTH - 1) {
-			findNeighbors(x + 1, y, target_color_max, target_color_min, hashSet, region);
+			findNeighbors(x + 1, y, target_color_max, target_color_min, already_checked_pixel, color_region);
 		}
 		if (y < COLOR_HEIGHT - 1) {
-			findNeighbors(x, y + 1, target_color_max, target_color_min, hashSet, region);
+			findNeighbors(x, y + 1, target_color_max, target_color_min, already_checked_pixel, color_region);
 		}
 	}
 }
 
 inline void region_growing(int* start, ColorPixel target_color_max, ColorPixel target_color_min) {
-	map<string, bool> hashSet;
-	vector<pair<int, int>> region;
+	map<string, bool> already_checked_pixel;
+	vector<pair<int, int>> color_region;
 
-	try
-	{
-		findNeighbors(start[0], start[1], target_color_max, target_color_min, hashSet, region);
-	}
-	catch (const exception &e)
-	{
-		cout << "Exception at findNeighbors-call: " << e.what() << endl;
-	}
+	findNeighbors(start[0], start[1], target_color_max, target_color_min, already_checked_pixel, color_region);
 	long int sum_x = 0;
 	long int sum_y = 0;
-	if (!region.empty()) {
-		for (const auto a : region) {
+	if (!color_region.empty()) {
+		for (const auto a : color_region) {
 			sum_x += a.first;
 			sum_y += a.second;
-			cv::circle(color, cv::Point(a.first, a.second), 3, cv::Scalar(0, 255, 0));
+			cv::circle(color, cv::Point(a.first, a.second), 1, cv::Scalar(0, 255, 0));
 		}
-		start[0] = sum_x / hashSet.size() + 0.5;
-		start[1] = sum_y / hashSet.size() + 0.5;
+		start[0] = sum_x / already_checked_pixel.size() + 0.5;
+		start[1] = sum_y / already_checked_pixel.size() + 0.5;
 	}
 }
 
