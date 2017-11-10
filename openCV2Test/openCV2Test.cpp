@@ -48,6 +48,9 @@ int drawColor() {
 	for (auto & p : colorMap) {
 		findColorAndMark(p.second, p.first);
 	}
+
+	cv::line(color, cv::Point2d(200, 0), cv::Point2d(200, COLOR_HEIGHT), cv::Scalar(0, 0, 0), 3);
+	cv::line(color, cv::Point2d(COLOR_WIDTH - 200, 0), cv::Point2d(COLOR_WIDTH - 200, COLOR_HEIGHT), cv::Scalar(0, 0, 0), 3);
 	
 	imshow("color image", color);
 	
@@ -115,14 +118,16 @@ int main() {
 	for (auto p : colorMap) {
 		addPoint(p.second.x, p.second.y);
 	}
-	thread serverThread(&startServer);
+	thread server_thread(&startServer);
 	cout << "Main thread" << endl;
 	while (true)
 	{
 		drawColor();
 
 		kinect.setRGB(color);
-		//depthImg = getDepthImage(kinect.depthImage, depth, kinect.depthImage.cols, kinect.depthImage.rows);
+		//color = color.colRange(200, COLOR_WIDTH - 200);
+		//kinect.setDepth();
+		//imshow("depth image", kinect.depthImage);
 
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
@@ -130,7 +135,7 @@ int main() {
 	}
 
 	run = false;
-	serverThread.join();
+	server_thread.join();
 
 	cv::destroyAllWindows();
 	return 0;
