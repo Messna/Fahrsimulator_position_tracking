@@ -5,15 +5,15 @@
 
 using namespace std;
 
-inline bool has_target_color(ColorPixel target_color_max, ColorPixel target_color_min, cv::Vec4b& color_pxl) {
+inline bool has_target_color(ColorPixel* target_color_max, ColorPixel* target_color_min, cv::Vec4b& color_pxl) {
 	const uint8_t blue = uint8_t(color_pxl[0]),
 		green = uint8_t(color_pxl[1]),
 		red = uint8_t(color_pxl[2]),
 		alpha = uint8_t(color_pxl[3]);
 
-	if (blue >= target_color_min.blue && blue <= target_color_max.blue &&
-		green >= target_color_min.green && green <= target_color_max.green &&
-		red >= target_color_min.red && red <= target_color_max.red) {
+	if (blue >= target_color_min->blue && blue <= target_color_max->blue &&
+		green >= target_color_min->green && green <= target_color_max->green &&
+		red >= target_color_min->red && red <= target_color_max->red) {
 		return true;
 	}
 
@@ -23,12 +23,13 @@ inline bool has_target_color(ColorPixel target_color_max, ColorPixel target_colo
 inline void findNeighbors(
 		int x, 
 		int y, 
-		ColorPixel target_color_max,
-		ColorPixel target_color_min,
+		ColorPixel* target_color_max,
+		ColorPixel* target_color_min,
 		std::map<string, bool>& already_checked_pixel,
 		std::vector<std::pair<int, int>>& color_region) {
 
-	const string xyKey = x + "|" + y;
+	string xyKey = to_string(x) + "|" + to_string(y);
+	//const string xyKey = x + "|" + y;
 	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
 
 	if (already_checked_pixel.find(xyKey) == already_checked_pixel.end() &&
@@ -52,32 +53,45 @@ inline void findNeighbors(
 	}
 }
 
-inline void region_growing(int* start, ColorPixel target_color_max, ColorPixel target_color_min) {
+inline void region_growing(int* start, ColorPixel* target_color_max, ColorPixel* target_color_min) {
 	map<string, bool> already_checked_pixel;
 	vector<pair<int, int>> color_region;
 
-	findNeighbors(start[0], start[1], target_color_max, target_color_min, already_checked_pixel, color_region);
+	//findNeighbors(start[0], start[1], target_color_max, target_color_min, already_checked_pixel, color_region);
+	for (int i = start[0] - max_search_arealength; i < start[0] + max_search_arealength; i++)
+	{
+		for (int j = start[1] - max_search_arealength; j < start[1] + max_search_arealength; j++)
+		{
+			string xyKey = to_string(i) + "|" + to_string(j);
+			cv::Vec4b& color_val = color.at<cv::Vec4b>(j, i);
+			if (already_checked_pixel.find(xyKey) == already_checked_pixel.end() &&
+				has_target_color(target_color_max, target_color_min, color_val)) {
+				already_checked_pixel[xyKey] = true;
+				color_region.push_back(std::make_pair(i, j));
+			}
+		}
+	}
 	long int sum_x = 0;
 	long int sum_y = 0;
 	if (!color_region.empty()) {
 		for (const auto a : color_region) {
 			sum_x += a.first;
 			sum_y += a.second;
-			cv::circle(color, cv::Point(a.first, a.second), 1, cv::Scalar(0, 255, 0));
+			//cv::circle(color, cv::Point(a.first, a.second), 1, cv::Scalar(0, 255, 0));
 		}
 		start[0] = sum_x / already_checked_pixel.size() + 0.5;
 		start[1] = sum_y / already_checked_pixel.size() + 0.5;
 	}
 }
 
-inline int* findBestPixelForColorRange(ColorPixel target_color_max, ColorPixel target_color_min, const ColorPixel target_colorpixel) {
+int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel* target_color_min, const ColorPixel& target_colorpixel) {
 	int* best_pos = nullptr;
 	long int min_error = generalTolerance * 3 * 255 + 0.5;
 
-	for (int x = target_colorpixel.x - 24; x < target_colorpixel.x + 24; x++) {
+	for (int x = target_colorpixel.x - max_search_arealength - 1; x < target_colorpixel.x + max_search_arealength + 1; x++) {
 		if (x < 0 || x >= COLOR_WIDTH) continue;
 
-		for (int y = target_colorpixel.y - 24; y < target_colorpixel.y + 24; y++) {
+		for (int y = target_colorpixel.y - max_search_arealength - 1; y < target_colorpixel.y + max_search_arealength + 1; y++) {
 			if (y < 0 || y >= COLOR_HEIGHT) continue;
 
 			cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
@@ -86,9 +100,9 @@ inline int* findBestPixelForColorRange(ColorPixel target_color_max, ColorPixel t
 				red = uint8_t(color_val[2]),
 				alpha = uint8_t(color_val[3]);
 
-			if (blue >= target_color_min.blue && blue <= target_color_max.blue &&
-				green >= target_color_min.green && green <= target_color_max.green &&
-				red >= target_color_min.red && red <= target_color_max.red) {
+			if (blue >= target_color_min->blue && blue <= target_color_max->blue &&
+				green >= target_color_min->green && green <= target_color_max->green &&
+				red >= target_color_min->red && red <= target_color_max->red) {
 
 				if (abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red) < min_error) {
 					min_error = abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red);
@@ -105,13 +119,13 @@ inline int* findBestPixelForColorRange(ColorPixel target_color_max, ColorPixel t
 	return best_pos;
 }
 
-inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown", const double toleranceFactor = generalTolerance) {
-	const int range = toleranceFactor * 255 + 0.5;
-	const ColorPixel rgb_min = ColorPixel{ max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
-	const ColorPixel rgb_max = ColorPixel{ min(255, target_pixel.red + range), min(255, target_pixel.green + range), min(255, target_pixel.blue + range) };
-	cv::Point textPos(0, 0);
+inline void findColorAndMark(ColorPixel& target_pixel, string s = "unknown", const double tolerance_factor = generalTolerance) {
+	int range = tolerance_factor * 255 + 0.5;
+	ColorPixel rgb_min = { max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
+	ColorPixel rgb_max = { min(255, target_pixel.red + range), min(255, target_pixel.green + range), min(255, target_pixel.blue + range) };
+	cv::Point text_pos(0, 0);
 
-	int* best_pos = findBestPixelForColorRange(rgb_max, rgb_min, target_pixel);
+	int* best_pos = findBestPixelForColorRange(&rgb_max, &rgb_min, target_pixel);
 	cv::Point *target;
 	if (best_pos != nullptr)
 	{ 
@@ -127,27 +141,27 @@ inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown"
 	double* angle = GetAngleFromColorIndex(best_pos[0], best_pos[1]);
 	double* realcoord = Get3DCoordinates(angle);
 
-	if (textPos.x < target->x &&textPos.y < target->y) {
-		textPos.x = target->x + 2;
-		textPos.y = target->y + 2;
+	if (text_pos.x < target->x &&text_pos.y < target->y) {
+		text_pos.x = target->x + 2;
+		text_pos.y = target->y + 2;
 	}
 
 	target_pixel.x = target->x;
 	target_pixel.y = target->y;
 
-	if (abs(target_pixel.x - target->x) < 25 && abs(target_pixel.y - target->y) < 25) {
-		target->x = target->x > 25 ? (target->x < COLOR_WIDTH - 25 ? target->x - 25 : COLOR_WIDTH - 50) : 1;
-		target->y = target->y > 25 ? (target->y < COLOR_HEIGHT - 25 ? target->y - 25 : COLOR_HEIGHT - 50) : 1;
+	if (abs(target_pixel.x - target->x) < max_search_arealength && abs(target_pixel.y - target->y) < max_search_arealength) {
+		target->x = target->x > max_search_arealength ? (target->x < COLOR_WIDTH - max_search_arealength ? target->x - max_search_arealength : COLOR_WIDTH - 2 * max_search_arealength) : 1;
+		target->y = target->y > max_search_arealength ? (target->y < COLOR_HEIGHT - max_search_arealength ? target->y - max_search_arealength : COLOR_HEIGHT - 2 * max_search_arealength) : 1;
 	} 
 	rectangle(color, 
 		cv::Point(target->x, target->y),
-		cv::Point(target->x + 50, target->y + 50),
+		cv::Point(target->x + 2 * max_search_arealength, target->y + 2 * max_search_arealength),
 		cv::Scalar(255, 255, 255));
 
 	// Put real coords in map for Unity
 	string ps = s;
 	ps[0] = 'P';
-	map<string, double *> testCoordsMap = map<string, double *>();
+	map<string, double *> test_coords_map = map<string, double *>();
 	realCoordsMap[ps] = new double[3];
 	realCoordsMap.at(ps)[0] = realcoord[0];
 	realCoordsMap.at(ps)[1] = realcoord[1];
@@ -160,7 +174,7 @@ inline void findColorAndMark(ColorPixel& target_pixel, std::string s = "unknown"
 	os << realcoord[2];
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
-	cv::putText(color, outputStr.c_str(), textPos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
+	cv::putText(color, outputStr.c_str(), text_pos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
 
 	delete target;
 	delete[] best_pos;
