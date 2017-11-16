@@ -35,7 +35,6 @@ double* GetAngleFromColorIndex(const int colorX, const int colorY) {
 }
 
 inline double* Get3DCoordinates(double* angles) {
-
 	double* realWorldCoords = new double[5]{ -1000, -1000, -1000, 1, 1 };
 
 	const double colorAngleX = angles[0];
