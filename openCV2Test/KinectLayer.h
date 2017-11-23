@@ -18,6 +18,10 @@
 
 #include <Kinect.h>
 
+#include <thread>
+#include <ppl.h>
+#include <wrl/client.h>
+
 using namespace std;
 
 #define ERROR_CHECK(ret)                                \
@@ -64,31 +68,68 @@ public:
 private:
 	unsigned int colorBytesPerPixel;
 	void initializeColorFrame() {
-		CComPtr<IColorFrameSource> colorFrameSource;
+		// Open Color Reader
+		Microsoft::WRL::ComPtr<IColorFrameSource> colorFrameSource;
 		ERROR_CHECK(kinect->get_ColorFrameSource(&colorFrameSource));
 		ERROR_CHECK(colorFrameSource->OpenReader(&colorFrameReader));
-		CComPtr<IFrameDescription> colorFrameDescription;
+
+		// Retrieve Color Description
+		Microsoft::WRL::ComPtr<IFrameDescription> colorFrameDescription;
 		ERROR_CHECK(colorFrameSource->CreateFrameDescription(ColorImageFormat::ColorImageFormat_Bgra, &colorFrameDescription));
-		colorFrameDescription->get_Width(&colorWidth);
-		colorFrameDescription->get_Height(&colorHeight);
-		colorFrameDescription->get_BytesPerPixel(&colorBytesPerPixel);
+		ERROR_CHECK(colorFrameDescription->get_Width(&colorWidth)); // 1920
+		ERROR_CHECK(colorFrameDescription->get_Height(&colorHeight)); // 1080
+		ERROR_CHECK(colorFrameDescription->get_BytesPerPixel(&colorBytesPerPixel)); // 4
+
+																					// Allocation Color Buffer
 		colorBuffer.resize(colorWidth * colorHeight * colorBytesPerPixel);
+
 		color_initialized = true;
 	}
 	void updateColorFrame() {
-		if (!color_initialized) initializeColorFrame();
-		CComPtr<IColorFrame> colorFrame;
-		auto ret = colorFrameReader->AcquireLatestFrame(&colorFrame);
-		if (FAILED(ret))return;
-		ERROR_CHECK(colorFrame->CopyConvertedFrameDataToArray((UINT)colorBuffer.size(), &colorBuffer[0], ColorImageFormat::ColorImageFormat_Bgra));
+		// Retrieve Color Frame
+		Microsoft::WRL::ComPtr<IColorFrame> colorFrame;
+		const HRESULT ret = colorFrameReader->AcquireLatestFrame(&colorFrame);
+		if (FAILED(ret)) {
+			return;
+		}
+
+		// Convert Format ( YUY2 -> BGRA )
+		ERROR_CHECK(colorFrame->CopyConvertedFrameDataToArray(static_cast<UINT>(colorBuffer.size()), &colorBuffer[0], ColorImageFormat::ColorImageFormat_Bgra));
+
+		
 	}
 public:
 	cv::Mat rgbImage;
 	void setRGB() { setRGB(rgbImage); }
 	void setRGB(cv::Mat& image) {
+		if (!color_initialized) initializeColorFrame();
+
 		updateColorFrame();
-		image = cv::Mat(colorHeight, colorWidth, CV_8UC4, &colorBuffer[0]);
-		// cv::cvtColor(image,image,CV_BGRA2BGR); // when you save with VideoWriter
+		
+		std::vector<ColorSpacePoint> colorSpacePoints(depthWidth * depthHeight);
+		ERROR_CHECK(coordinateMapper->MapDepthFrameToColorSpace(depthBuffer.size(), &depthBuffer[0], colorSpacePoints.size(), &colorSpacePoints[0]));
+
+		// Mapping Color to Depth Resolution
+		std::vector<BYTE> buffer(depthWidth * depthHeight * colorBytesPerPixel);
+
+		Concurrency::parallel_for(0, depthHeight, [&](const int depthY) {
+			const unsigned int depthOffset = depthY * depthWidth;
+			for (int depthX = 0; depthX < depthWidth; depthX++) {
+				unsigned int depthIndex = depthOffset + depthX;
+				const int colorX = static_cast<int>(colorSpacePoints[depthIndex].X + 0.5f);
+				const int colorY = static_cast<int>(colorSpacePoints[depthIndex].Y + 0.5f);
+				if ((0 <= colorX) && (colorX < colorWidth) && (0 <= colorY) && (colorY < colorHeight)) {
+					const unsigned int colorIndex = (colorY * colorWidth + colorX) * colorBytesPerPixel;
+					depthIndex = depthIndex * colorBytesPerPixel;
+					buffer[depthIndex + 0] = colorBuffer[colorIndex + 0];
+					buffer[depthIndex + 1] = colorBuffer[colorIndex + 1];
+					buffer[depthIndex + 2] = colorBuffer[colorIndex + 2];
+					buffer[depthIndex + 3] = colorBuffer[colorIndex + 3];
+				}
+			}
+		});
+
+		image = cv::Mat(depthHeight, depthWidth, CV_8UC4, &buffer[0]).clone();
 	}
 
 	// ******** depth *******
@@ -101,36 +142,39 @@ private:
 	UINT16 maxDepth;
 	UINT16 minDepth;
 	void initializeDepthFrame() {
-		CComPtr<IDepthFrameSource> depthFrameSource;
+		// Open Depth Reader
+		Microsoft::WRL::ComPtr<IDepthFrameSource> depthFrameSource;
 		ERROR_CHECK(kinect->get_DepthFrameSource(&depthFrameSource));
 		ERROR_CHECK(depthFrameSource->OpenReader(&depthFrameReader));
-		CComPtr<IFrameDescription> depthFrameDescription;
-		ERROR_CHECK(depthFrameSource->get_FrameDescription(
-			&depthFrameDescription));
-		ERROR_CHECK(depthFrameDescription->get_Width(&depthWidth));
-		ERROR_CHECK(depthFrameDescription->get_Height(&depthHeight));
-		ERROR_CHECK(depthFrameSource->get_DepthMaxReliableDistance(&maxDepth));
-		ERROR_CHECK(depthFrameSource->get_DepthMinReliableDistance(&minDepth));
+
+		// Retrieve Depth Description
+		Microsoft::WRL::ComPtr<IFrameDescription> depthFrameDescription;
+		ERROR_CHECK(depthFrameSource->get_FrameDescription(&depthFrameDescription));
+		ERROR_CHECK(depthFrameDescription->get_Width(&depthWidth)); // 512
+		ERROR_CHECK(depthFrameDescription->get_Height(&depthHeight)); // 424
+
+																					// Allocation Depth Buffer
 		depthBuffer.resize(depthWidth * depthHeight);
 		depth_initialized = true;
 	}
 	void updateDepthFrame() {
 		if (!depth_initialized) initializeDepthFrame();
-		CComPtr<IDepthFrame> depthFrame;
-		auto ret = depthFrameReader->AcquireLatestFrame(&depthFrame);
-		if (FAILED(ret))return;
-		ERROR_CHECK(depthFrame->CopyFrameDataToArray((UINT)depthBuffer.size(), &depthBuffer[0]));
+		// Retrieve Depth Frame
+		Microsoft::WRL::ComPtr<IDepthFrame> depthFrame;
+		const HRESULT ret = depthFrameReader->AcquireLatestFrame(&depthFrame);
+		if (FAILED(ret)) {
+			return;
+		}
+
+		// Retrieve Depth Data
+		ERROR_CHECK(depthFrame->CopyFrameDataToArray(static_cast<UINT>(depthBuffer.size()), &depthBuffer[0]));
 	}
 public:
 	cv::Mat depthImage;
 	void setDepth(bool raw = true) { setDepth(depthImage, raw); }
 	void setDepth(cv::Mat& depthImage, bool raw = true) {
 		updateDepthFrame();
-		depthImage = cv::Mat(depthHeight, depthWidth, CV_16UC1);
-		for (int i = 0; i < depthImage.total(); i++) {
-			double rate = depthBuffer[i] / (double)maxDepth;
-			depthImage.at<UINT16>(i) = (raw) ? depthBuffer[i] : static_cast<UINT16>(255 * 255 * rate); // [0, 65535]
-		}
+		depthImage = cv::Mat(depthHeight, depthWidth, CV_16UC1, &depthBuffer[0]);
 	}
 	int getDepthForPixel(int x, int y) {
 		updateDepthFrame();

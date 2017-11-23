@@ -5,8 +5,8 @@
 #include "opencv2\opencv.hpp"
 #include "KinectLayer.h"
 
-#define COLOR_WIDTH 1920    
-#define COLOR_HEIGHT 1080    
+#define COLOR_WIDTH 512    
+#define COLOR_HEIGHT 424    
 #define DEPTH_WIDTH 512    
 #define DEPTH_HEIGHT 424      
 #define CHANNEL 3

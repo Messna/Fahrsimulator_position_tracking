@@ -49,9 +49,6 @@ int drawColor() {
 		findColorAndMark(p.second, p.first);
 	}
 
-	cv::line(color, cv::Point2d(200, 0), cv::Point2d(200, COLOR_HEIGHT), cv::Scalar(0, 0, 0), 3);
-	cv::line(color, cv::Point2d(COLOR_WIDTH - 200, 0), cv::Point2d(COLOR_WIDTH - 200, COLOR_HEIGHT), cv::Scalar(0, 0, 0), 3);
-	
 	imshow("color image", color);
 	
 	return 0;
@@ -73,13 +70,20 @@ static ColorPixel addPoint(const int x, const int y) {
 
 	cout << "Color: B: " << static_cast<int>(blue) << " G: " << static_cast<int>(green) << " R: " << static_cast<int>(red) << endl;
 
-	double* colorAngleArr = GetAngleFromColorIndex(x, y);
-	double* rdWorldPos = Get3DCoordinates(colorAngleArr);
-	rdWorldPos[3] = x;
-	rdWorldPos[4] = y;
+	//double* colorAngleArr = GetAngleFromColorIndex(x, y);
+	double* real_world_pos = new double[5]{ -1000, -1000, -1000, 1, 1 };
+	CameraSpacePoint* camera_space_point = new CameraSpacePoint();
+	float fx = x;
+	float fy = y;
+	kinect.coordinateMapper->MapDepthPointToCameraSpace(DepthSpacePoint{ fx, fy }, kinect.getDepthForPixel(fx, fy), camera_space_point);
+	real_world_pos[0] = camera_space_point->X;
+	real_world_pos[1] = camera_space_point->Y;
+	real_world_pos[2] = camera_space_point->Z;
+	real_world_pos[3] = x;
+	real_world_pos[4] = y;
 	stringstream tmp;
 	tmp << "P" << pointVec.size() + 1 << "(x: " << x << " y: " << y << ")";
-	pointVec.push_back(make_pair(tmp.str(), rdWorldPos));
+	pointVec.push_back(make_pair(tmp.str(), real_world_pos));
 
 	int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
 	int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
@@ -110,8 +114,8 @@ int main() {
 
 	kinect.setDepth();
 	kinect.setRGB(color);
-	while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) // Check if Matrix is filled now
-		kinect.setRGB(color);
+	//while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) // Check if Matrix is filled now
+		//kinect.setRGB(color);
 
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
@@ -125,6 +129,7 @@ int main() {
 		drawColor();
 
 		kinect.setRGB(color);
+		imshow("color image", color);
 		//color = color.colRange(200, COLOR_WIDTH - 200);
 		//kinect.setDepth();
 		//imshow("depth image", kinect.depthImage);

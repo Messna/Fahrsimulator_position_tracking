@@ -2,6 +2,7 @@
 
 #include "opencv2/opencv.hpp"
 #include "ColorPixel.h"
+#include "KinectLayer.h"
 
 using namespace std;
 
@@ -138,8 +139,15 @@ inline void findColorAndMark(ColorPixel& target_pixel, string s = "unknown", con
 		best_pos[1] = target_pixel.y;
 	}
 	cv::circle(color, *target, 1, cv::Scalar(0, 0, 0));
-	double* angle = GetAngleFromColorIndex(best_pos[0], best_pos[1]);
-	double* realcoord = Get3DCoordinates(angle);
+
+	float fx = best_pos[0];
+	float fy = best_pos[1];
+	double* real_world_pos = new double[5]{ -1000, -1000, -1000, 1, 1 };
+	CameraSpacePoint* camera_space_point = new CameraSpacePoint();
+	ERROR_CHECK(kinect.coordinateMapper->MapDepthPointToCameraSpace(DepthSpacePoint{ fx, fy }, kinect.getDepthForPixel(fx, fy), camera_space_point));
+	real_world_pos[0] = camera_space_point->X;
+	real_world_pos[1] = camera_space_point->Y;
+	real_world_pos[2] = camera_space_point->Z;
 
 	if (text_pos.x < target->x &&text_pos.y < target->y) {
 		text_pos.x = target->x + 2;
@@ -163,15 +171,15 @@ inline void findColorAndMark(ColorPixel& target_pixel, string s = "unknown", con
 	ps[0] = 'P';
 	map<string, double *> test_coords_map = map<string, double *>();
 	realCoordsMap[ps] = new double[3];
-	realCoordsMap.at(ps)[0] = realcoord[0];
-	realCoordsMap.at(ps)[1] = realcoord[1];
-	realCoordsMap.at(ps)[2] = realcoord[2];
+	realCoordsMap.at(ps)[0] = real_world_pos[0];
+	realCoordsMap.at(ps)[1] = real_world_pos[1];
+	realCoordsMap.at(ps)[2] = real_world_pos[2];
 
 	// Draw real coords:
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5);
 	ostringstream os;
-	os << realcoord[2];
+	os << real_world_pos[2];
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
 	cv::putText(color, outputStr.c_str(), text_pos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
