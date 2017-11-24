@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "Globals.h"
-#include "DepthLib.h"
 #include "ColorDetection.h"
 
 #include <string>
@@ -37,18 +36,19 @@ XMLWriter* writer = nullptr;
 int drawColor() {
 	if (!pointVec.empty()) {
 		for (pair<string, double*> e : pointVec) {
-			cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2, cv::Scalar(0.0, 0.0, 0.0), -1);
+			cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2.0 / resize_factor, cv::Scalar(0.0, 0.0, 0.0), -1);
 			
-			stringstream text;
-			text << setprecision(3) << e.first << " X:" << e.second[0] << " Y:" << e.second[1] << " Z:" << e.second[2];
-			cv::putText(color, text.str().c_str(), cv::Point2d(e.second[3] + 4, e.second[4] - 4), 1, 1, cv::Scalar(0.0, 0.0, 0.0));
+			//stringstream text;
+			cout << "Real World: " << setprecision(3) << e.first << " X:" << e.second[0] << " Y:" << e.second[1] << " Z:" << e.second[2] << endl;
+			//cv::putText(color, text.str().c_str(), cv::Point2d(e.second[3] + 4, e.second[4] - 4), 1, 1.5 / resize_factor, cv::Scalar(0.0, 0.0, 0.0));
 		}
 	}
 
 	for (auto & p : colorMap) {
-		findColorAndMark(p.second, p.first);
+		find_color_and_mark(p.second, p.first);
 	}
 
+	resize(color, color, cv::Size(color.cols * resize_factor, color.rows * resize_factor));
 	imshow("color image", color);
 	
 	return 0;
@@ -101,7 +101,7 @@ static void removePoint() {
 
 static void onClick(const int event, const int x, const int y, int f, void*) {
 	if (event == CV_EVENT_LBUTTONDOWN) {
-		addToColorMap(addPoint(x, y));
+		addToColorMap(addPoint(x / resize_factor, y / resize_factor));
 	}
 	else if (event == CV_EVENT_RBUTTONDOWN) {
 		removePoint();
@@ -128,11 +128,8 @@ int main() {
 	{
 		drawColor();
 
+		kinect.setDepth();
 		kinect.setRGB(color);
-		imshow("color image", color);
-		//color = color.colRange(200, COLOR_WIDTH - 200);
-		//kinect.setDepth();
-		//imshow("depth image", kinect.depthImage);
 
 		int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')

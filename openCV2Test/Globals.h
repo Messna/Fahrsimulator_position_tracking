@@ -22,6 +22,7 @@ const float fovColorX = 84.1;
 const float fovColorY = 53.8;
 const double generalTolerance = 0.1;
 const int max_search_arealength = 25;
+const int resize_factor = 2;
 
 int clickedX = 1;
 int clickedY = 1;

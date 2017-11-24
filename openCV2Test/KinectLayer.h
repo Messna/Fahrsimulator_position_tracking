@@ -108,7 +108,6 @@ public:
 		
 		std::vector<ColorSpacePoint> colorSpacePoints(depthWidth * depthHeight);
 		ERROR_CHECK(coordinateMapper->MapDepthFrameToColorSpace(depthBuffer.size(), &depthBuffer[0], colorSpacePoints.size(), &colorSpacePoints[0]));
-
 		// Mapping Color to Depth Resolution
 		std::vector<BYTE> buffer(depthWidth * depthHeight * colorBytesPerPixel);
 
@@ -177,7 +176,6 @@ public:
 		depthImage = cv::Mat(depthHeight, depthWidth, CV_16UC1, &depthBuffer[0]);
 	}
 	int getDepthForPixel(int x, int y) {
-		updateDepthFrame();
 		return depthBuffer[y * depthWidth + x];
 	}
 

@@ -55,7 +55,7 @@ inline void findNeighbors(
 }
 
 inline void region_growing(int* start, ColorPixel* target_color_max, ColorPixel* target_color_min) {
-	int pixelCount = 0;
+	int pixel_count = 0;
 	long int sum_x = 0;
 	long int sum_y = 0;
 
@@ -69,7 +69,7 @@ inline void region_growing(int* start, ColorPixel* target_color_max, ColorPixel*
 			string xyKey = to_string(i) + "|" + to_string(j);
 			cv::Vec4b& color_val = color.at<cv::Vec4b>(j, i);
 			if (has_target_color(target_color_max, target_color_min, color_val)) {
-				pixelCount++;
+				pixel_count++;
 				sum_x += i;
 				sum_y += j;
 			}
@@ -77,12 +77,12 @@ inline void region_growing(int* start, ColorPixel* target_color_max, ColorPixel*
 	}
 
 	if (sum_x > 0 && sum_y > 0) {
-		start[0] = sum_x / pixelCount + 0.5;
-		start[1] = sum_y / pixelCount + 0.5;
+		start[0] = sum_x / pixel_count + 0.5;
+		start[1] = sum_y / pixel_count + 0.5;
 	}
 }
 
-int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel* target_color_min, const ColorPixel& target_colorpixel) {
+inline int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel* target_color_min, const ColorPixel& target_colorpixel) {
 	int* best_pos = nullptr;
 	long int min_error = generalTolerance * 3 * 255 + 0.5;
 
@@ -117,7 +117,7 @@ int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel* target
 	return best_pos;
 }
 
-inline void findColorAndMark(ColorPixel& target_pixel, string s = "unknown", const double tolerance_factor = generalTolerance) {
+inline void find_color_and_mark(ColorPixel& target_pixel, string s = "unknown", const double tolerance_factor = generalTolerance) {
 	int range = tolerance_factor * 255 + 0.5;
 	ColorPixel rgb_min = { max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range) };
 	ColorPixel rgb_max = { min(255, target_pixel.red + range), min(255, target_pixel.green + range), min(255, target_pixel.blue + range) };
@@ -140,7 +140,7 @@ inline void findColorAndMark(ColorPixel& target_pixel, string s = "unknown", con
 	float fx = best_pos[0];
 	float fy = best_pos[1];
 	double* real_world_pos = new double[5]{ -1000, -1000, -1000, 1, 1 };
-	CameraSpacePoint* camera_space_point = new CameraSpacePoint();
+	auto camera_space_point = new CameraSpacePoint();
 	ERROR_CHECK(kinect.coordinateMapper->MapDepthPointToCameraSpace(DepthSpacePoint{ fx, fy }, kinect.getDepthForPixel(fx, fy), camera_space_point));
 	real_world_pos[0] = camera_space_point->X;
 	real_world_pos[1] = camera_space_point->Y;
@@ -179,7 +179,7 @@ inline void findColorAndMark(ColorPixel& target_pixel, string s = "unknown", con
 	os << real_world_pos[2];
 	std::string str = os.str();
 	std::string outputStr = s.append(" ").append(str);
-	cv::putText(color, outputStr.c_str(), text_pos, 1, 1, cv::Scalar(0.0, 0.0, 0.0));
+	cv::putText(color, outputStr.c_str(), text_pos, 1, 1.5 / resize_factor, cv::Scalar(0.0, 0.0, 0.0));
 
 	delete target;
 	delete[] best_pos;
