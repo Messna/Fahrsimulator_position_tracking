@@ -15,8 +15,14 @@
 #pragma comment(lib, "Ws2_32.lib")
 #define REVBUFFLEN 8142
 
+const cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) << 
+	0.0999171, -0.00158003, 0.000892209, -0.970084,
+	-0.00160604, -0.0998761, 0.0029855, 4.8805,
+	0.000844493, -0.00299935, -0.099885, -14.3536,
+	0, 0, 0, 1);
 
-int startServer() {
+int startServer()
+{
 	// Initialize Winsock.
 	bool run = true;
 
@@ -73,7 +79,7 @@ int startServer() {
 		wprintf(L"Waiting for client to connect...\n");
 		const SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
 
-		if (AcceptSocket == INVALID_SOCKET)
+		if (AcceptSocket == INVALID_SOCKET)	
 		{
 			wprintf(L"accept failed with error: %ld\n", WSAGetLastError());
 			closesocket(ListenSocket);
@@ -87,11 +93,17 @@ int startServer() {
 		{
 			recv(AcceptSocket, recvBuffer, REVBUFFLEN, 0);
 			cout << "Received: " << string(recvBuffer) << endl;
-			if (string(recvBuffer).compare("send_points") == 0) {
+			if (string(recvBuffer).compare("send_points") == 0)
+			{
 				string s = "";
-				for (const auto p : realCoordsMap) {
+				for (const auto p : realCoordsMap)
+				{
 					// Format: "P1:127.531/48.848/17.8"
-					s += p.first + ":" + to_string(p.second[0]) + "/" + to_string(p.second[1]) + "/" + to_string(p.second[2]) + "\n";
+					const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0], p.second[1], -p.second[2], 1);
+					cv::Mat transformed_mat = transformation_mat * point_mat;
+					s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) + "/" + to_string(transformed_mat.at<double>(1, 0))
+						+ "/" + to_string(transformed_mat.at<double>(2, 0)) + "\n";
+					cout << s << endl;
 				}
 				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
 				cout << "Sent data" << endl;

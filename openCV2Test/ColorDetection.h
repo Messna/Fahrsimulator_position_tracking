@@ -55,33 +55,30 @@ inline void findNeighbors(
 }
 
 inline void region_growing(int* start, ColorPixel* target_color_max, ColorPixel* target_color_min) {
-	map<string, bool> already_checked_pixel;
-	vector<pair<int, int>> color_region;
+	int pixelCount = 0;
+	long int sum_x = 0;
+	long int sum_y = 0;
 
 	//findNeighbors(start[0], start[1], target_color_max, target_color_min, already_checked_pixel, color_region);
-	for (int i = start[0] - max_search_arealength; i < start[0] + max_search_arealength; i++)
+	for (int i = start[0] - max_search_arealength; i < start[0] + max_search_arealength - 1; i = i + 2)
 	{
-		for (int j = start[1] - max_search_arealength; j < start[1] + max_search_arealength; j++)
+		if (i < 0 || i >= COLOR_WIDTH) continue;
+		for (int j = start[1] - max_search_arealength; j < start[1] + max_search_arealength - 1; j = j + 2)
 		{
+			if (j < 0 || j >= COLOR_HEIGHT) continue;
 			string xyKey = to_string(i) + "|" + to_string(j);
 			cv::Vec4b& color_val = color.at<cv::Vec4b>(j, i);
-			if (already_checked_pixel.find(xyKey) == already_checked_pixel.end() &&
-				has_target_color(target_color_max, target_color_min, color_val)) {
-				already_checked_pixel[xyKey] = true;
-				color_region.push_back(std::make_pair(i, j));
+			if (has_target_color(target_color_max, target_color_min, color_val)) {
+				pixelCount++;
+				sum_x += i;
+				sum_y += j;
 			}
 		}
 	}
-	long int sum_x = 0;
-	long int sum_y = 0;
-	if (!color_region.empty()) {
-		for (const auto a : color_region) {
-			sum_x += a.first;
-			sum_y += a.second;
-			//cv::circle(color, cv::Point(a.first, a.second), 1, cv::Scalar(0, 255, 0));
-		}
-		start[0] = sum_x / already_checked_pixel.size() + 0.5;
-		start[1] = sum_y / already_checked_pixel.size() + 0.5;
+
+	if (sum_x > 0 && sum_y > 0) {
+		start[0] = sum_x / pixelCount + 0.5;
+		start[1] = sum_y / pixelCount + 0.5;
 	}
 }
 
