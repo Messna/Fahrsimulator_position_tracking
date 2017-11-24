@@ -15,6 +15,11 @@
 #pragma comment(lib, "Ws2_32.lib")
 #define REVBUFFLEN 8142
 
+const cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) << 
+	0.0999171, -0.00158003, 0.000892209, -0.970084,
+	-0.00160604, -0.0998761, 0.0029855, 4.8805,
+	0.000844493, -0.00299935, -0.099885, -14.3536,
+	0, 0, 0, 1);
 
 int startServer()
 {
@@ -74,7 +79,7 @@ int startServer()
 		wprintf(L"Waiting for client to connect...\n");
 		const SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
 
-		if (AcceptSocket == INVALID_SOCKET)
+		if (AcceptSocket == INVALID_SOCKET)	
 		{
 			wprintf(L"accept failed with error: %ld\n", WSAGetLastError());
 			closesocket(ListenSocket);
@@ -94,11 +99,7 @@ int startServer()
 				for (const auto p : realCoordsMap)
 				{
 					// Format: "P1:127.531/48.848/17.8"
-					cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) << 0.0940564, -0.00577567, -0.00398635, -3.50902,
-						-0.00550711, -0.0939534, 0.00618749, 4.7394,
-						-0.00434985, -0.00593758, -0.0940302, -15.0081,
-						0, 0, 0, 1);
-					cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0], p.second[1], p.second[2], 1);
+					const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0], p.second[1], -p.second[2], 1);
 					cv::Mat transformed_mat = transformation_mat * point_mat;
 					s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) + "/" + to_string(transformed_mat.at<double>(1, 0))
 						+ "/" + to_string(transformed_mat.at<double>(2, 0)) + "\n";
