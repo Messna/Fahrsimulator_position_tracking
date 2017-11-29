@@ -128,7 +128,7 @@ inline void find_color_and_mark(ColorPixel& target_pixel, string s = "unknown", 
 	if (best_pos != nullptr)
 	{ 
 		target = new cv::Point(int(0.5 + best_pos[0]), best_pos[1]);
-	}else
+	} else
 	{
 		target = new cv::Point(target_pixel.x, target_pixel.y);
 		best_pos = new int[2];
