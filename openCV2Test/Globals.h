@@ -6,33 +6,18 @@
 #include "KinectLayer.h"
 
 #define COLOR_WIDTH 512    
-#define COLOR_HEIGHT 424    
-#define DEPTH_WIDTH 512    
-#define DEPTH_HEIGHT 424      
-#define CHANNEL 3
-
-#define PI 3.14159265358979323846
+#define COLOR_HEIGHT 424
+#define MAX_REGION_SIZE 2000
 
 using namespace std;
 
-//const float a = 0.00173667;
-const float fovDepthX = 70.6;
-const float fovDepthY = 60;
-const float fovColorX = 84.1;
-const float fovColorY = 53.8;
 const double generalTolerance = 0.1;
 const int max_search_arealength = 25;
 const int resize_factor = 2;
 
-int clickedX = 1;
-int clickedY = 1;
-double* clickedPoint1 = nullptr;
-double* clickedPoint2 = nullptr;
 static vector<pair<string, double *>> pointVec;
 map<string, double *> realCoordsMap;
 static bool run;
 
 cv::Mat color;
-IplImage* depth;
-int** depthImg = nullptr;
 KinectLayer kinect;

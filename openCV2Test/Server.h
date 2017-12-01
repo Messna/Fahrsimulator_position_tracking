@@ -21,14 +21,14 @@ const cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) <<
 	0.000974538, 0.0183302, 0.0899891, -11.552,
 	0, 0, 0, 1);
 
-int startServer()
+inline int startServer()
 {
 	// Initialize Winsock.
 	bool run = true;
 
 	char recvBuffer[REVBUFFLEN];
 	WSADATA wsaData;
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	const int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR)
 	{
 		wprintf(L"WSAStartup failed with error: %ld\n", iResult);
@@ -72,7 +72,7 @@ int startServer()
 		return 1;
 	}
 
-	std::string msg = "Hallo there!";
+	string msg = "Hallo there!";
 
 	while (run)
 	{

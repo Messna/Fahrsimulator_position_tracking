@@ -29,25 +29,20 @@
 
 using namespace std;
 
-BYTE buf[DEPTH_WIDTH * DEPTH_HEIGHT * CHANNEL];
 map<string, ColorPixel> colorMap;
 XMLWriter* writer = nullptr;
 
-int drawColor()
-{
-	for (pair<string, double*> e : pointVec)
-	{
-		cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2.0 / resize_factor, cv::Scalar(0.0, 0.0, 0.0), -1);
+int drawColor() {
+	for (const auto e : pointVec) {
+		circle(color, cv::Point2d(e.second[3], e.second[4]), 2.0 / resize_factor, cv::Scalar(0.0, 0.0, 0.0), -1);
 	}
 
 	bool** visited_array = new bool*[COLOR_WIDTH];
-	for (int i = 0; i < COLOR_WIDTH; i++)
-	{
+	for (int i = 0; i < COLOR_WIDTH; i++) {
 		visited_array[i] = new bool[COLOR_HEIGHT];
 	}
 
-	for (auto& p : colorMap)
-	{
+	for (auto& p : colorMap) {
 		ColorPixel* adaptedColor = find_color_and_mark(p.second, visited_array, p.first);
 		p.second.red = adaptedColor->red;
 		p.second.green = adaptedColor->green;
@@ -57,8 +52,7 @@ int drawColor()
 	}
 
 
-	for (int i = 0; i < COLOR_WIDTH; i++)
-	{
+	for (int i = 0; i < COLOR_WIDTH; i++) {
 		delete visited_array[i];
 	}
 	delete[] visited_array;
@@ -69,14 +63,12 @@ int drawColor()
 	return 0;
 }
 
-static void addToColorMap(const ColorPixel pixel)
-{
+static void addToColorMap(const ColorPixel pixel) {
 	colorMap["C" + to_string(colorMap.size() + 1)] = pixel;
 	writer->AddPixel("C" + to_string(colorMap.size()), colorMap.at("C" + to_string(colorMap.size())));
 }
 
-static ColorPixel add_point(const int x, const int y)
-{
+static ColorPixel add_point(const int x, const int y) {
 	cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
 
 	const uint8_t blue = uint8_t(color_val[0]), // B
@@ -112,40 +104,24 @@ static ColorPixel add_point(const int x, const int y)
 	return ColorPixel{red, green, blue, rec_x, rec_y};
 }
 
-static void remove_point()
-{
-	if (!pointVec.empty())
-	{
+static void remove_point() {
+	if (!pointVec.empty()) {
 		pointVec.pop_back();
 		writer->RemovePixel("C" + to_string(colorMap.size()));
 		colorMap.erase(colorMap.find("C" + to_string(colorMap.size())));
 	}
 }
 
-static void onClick(const int event, const int x, const int y, int f, void*)
-{
-	if (event == CV_EVENT_LBUTTONDOWN)
-	{
+static void onClick(const int event, const int x, const int y, int f, void*) {
+	if (event == CV_EVENT_LBUTTONDOWN) {
 		addToColorMap(add_point(x / resize_factor, y / resize_factor));
 	}
-	else if (event == CV_EVENT_RBUTTONDOWN)
-	{
+	else if (event == CV_EVENT_RBUTTONDOWN) {
 		remove_point();
 	}
 }
 
-int main()
-{
-	auto already_checked_pixel = unordered_map<string, bool>();
-	for (int i = 0; i < 10000; i++)
-	{
-		string key = to_string(i) + "|" + to_string(i);
-		auto iterator = already_checked_pixel.find(key);
-		if (iterator == already_checked_pixel.end()) {
-			already_checked_pixel.insert_or_assign(iterator, key, true);
-		}
-	}
-
+int main() {
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 	cv::setMouseCallback("color image", onClick);
 
@@ -157,20 +133,18 @@ int main()
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
 
-	for (auto p : colorMap)
-	{
+	for (const auto p : colorMap) {
 		add_point(p.second.x, p.second.y);
 	}
 	thread server_thread(&startServer);
 	cout << "Main thread" << endl;
-	while (true)
-	{
+	while (true) {
 		drawColor();
 
 		kinect.setDepth();
 		kinect.setRGB(color);
 
-		int c = cvWaitKey(1);
+		const auto c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
 	}

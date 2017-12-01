@@ -12,14 +12,11 @@ long int sum_x;
 long int sum_y;
 long int pixel_count;
 
-#define MAX_REGION_SIZE 2000
-
 
 inline bool has_target_color(ColorPixel* target_color_max, ColorPixel* target_color_min, cv::Vec4b& color_pxl) {
-	const uint8_t blue = uint8_t(color_pxl[0]),
+	const auto blue = uint8_t(color_pxl[0]),
 		green = uint8_t(color_pxl[1]),
-		red = uint8_t(color_pxl[2]),
-		alpha = uint8_t(color_pxl[3]);
+		red = uint8_t(color_pxl[2]);
 
 	if (blue >= target_color_min->blue && blue <= target_color_max->blue &&
 		green >= target_color_min->green && green <= target_color_max->green &&
@@ -101,8 +98,8 @@ inline int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel*
 		for (int y = target_colorpixel.y - max_search_arealength - 1; y < target_colorpixel.y + max_search_arealength + 1; y++) {
 			if (y < 0 || y >= COLOR_HEIGHT) continue;
 
-			cv::Vec4b& color_val = color.at<cv::Vec4b>(y, x);
-			const uint8_t blue = uint8_t(color_val[0]),
+			auto color_val = color.at<cv::Vec4b>(y, x);
+			const auto blue = uint8_t(color_val[0]),
 				green = uint8_t(color_val[1]),
 				red = uint8_t(color_val[2]);
 
@@ -187,8 +184,8 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 	target_pixel.x = target->x;
 	target_pixel.y = target->y;
 
-	if (abs(target_pixel.x - target->x) < max_search_arealength && abs(target_pixel.y - target->y) < max_search_arealength
-	) {
+	if (abs(target_pixel.x - target->x) < max_search_arealength && 
+		abs(target_pixel.y - target->y) < max_search_arealength) {
 		target->x = target->x > max_search_arealength
 			            ? (target->x < COLOR_WIDTH - max_search_arealength
 				               ? target->x - max_search_arealength
