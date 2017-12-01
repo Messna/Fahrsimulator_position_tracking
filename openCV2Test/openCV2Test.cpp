@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include <winsock2.h>
-#include <WS2tcpip.h>
 #include <windows.h>
 #include <thread>
 
@@ -15,13 +14,11 @@
 #include <string>
 #include <iostream>
 
-#include "Kinect.h"
 #include "KinectLayer.h"
 
 #include <opencv2/opencv.hpp>
 #include "opencv2/world.hpp"
 #include "opencv2/highgui.hpp"
-#include "opencv2/core/cvstd.hpp"
 
 #include "Server.h"
 #include "ColorPixel.h"
@@ -74,7 +71,6 @@ static ColorPixel add_point(const int x, const int y) {
 	const uint8_t blue = uint8_t(color_val[0]), // B
 		green = uint8_t(color_val[1]), // G
 		red = uint8_t(color_val[2]); // R
-	//	alpha = uint8_t(colorVal[3]); // Alpha
 
 	cout << "Color: B: " << static_cast<int>(blue) << " G: " << static_cast<int>(green) << " R: " << static_cast<int>(red)
 		<< endl;
@@ -127,8 +123,10 @@ int main() {
 
 	kinect.setDepth();
 	kinect.setRGB(color);
-	//while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) // Check if Matrix is filled now
-	//kinect.setRGB(color);
+	while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) {// Check if Matrix is filled now
+		kinect.setDepth();
+		kinect.setRGB(color);
+	}
 
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
@@ -144,7 +142,7 @@ int main() {
 		kinect.setDepth();
 		kinect.setRGB(color);
 
-		const auto c = cvWaitKey(1);
+		const int c = cvWaitKey(1);
 		if (c == 27 || c == 'q' || c == 'Q')
 			break;
 	}

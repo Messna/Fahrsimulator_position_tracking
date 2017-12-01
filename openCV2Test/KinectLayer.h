@@ -29,13 +29,6 @@ using namespace std;
     ss << "failed " #ret " " << hex << ret << endl;     \
     throw runtime_error(ss.str().c_str());              \
   }
-#define ERROR_CHECK2( ret )                                     \
-  if( FAILED( ret ) ){                                          \
-    std::stringstream ss;                                       \
-    ss << "failed " #ret " " << std::hex << ret << std::endl;   \
-    throw std::runtime_error( ss.str().c_str() );               \
-  }
-
 
 class KinectLayer {
 	// ******* kinect ********

@@ -87,8 +87,8 @@ inline void region_growing2(int* start, ColorPixel* target_color_max, ColorPixel
 	}
 }
 
-inline int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel* target_color_min,
-                                       const ColorPixel& target_colorpixel, bool** visited_array) {
+inline int* find_best_pixel_for_color_range(ColorPixel* target_color_max, ColorPixel* target_color_min,
+                                            const ColorPixel& target_colorpixel) {
 	int* best_pos = nullptr;
 	long int min_error = generalTolerance * 3 * 255 + 0.5;
 
@@ -106,10 +106,8 @@ inline int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel*
 			if (blue >= target_color_min->blue && blue <= target_color_max->blue &&
 				green >= target_color_min->green && green <= target_color_max->green &&
 				red >= target_color_min->red && red <= target_color_max->red) {
-				if (abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red) <
-					min_error) {
-					min_error = abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(
-						red - target_colorpixel.red);
+				if (abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red) < min_error) {
+					min_error = abs(blue - target_colorpixel.blue) + abs(green - target_colorpixel.green) + abs(red - target_colorpixel.red);
 					if (best_pos == nullptr) best_pos = new int[2];
 					best_pos[0] = x;
 					best_pos[1] = y;
@@ -117,15 +115,13 @@ inline int* findBestPixelForColorRange(ColorPixel* target_color_max, ColorPixel*
 			}
 		}
 	}
-	if (best_pos != nullptr)
-		region_growing2(best_pos, target_color_max, target_color_min, visited_array);
 
 	return best_pos;
 }
 
 inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_array, string s = "unknown",
                                        const double tolerance_factor = generalTolerance) {
-	int range = tolerance_factor * 255 + 0.5;
+	const int range = tolerance_factor * 255 + 0.5;
 	ColorPixel rgb_min = {
 		max(0, target_pixel.red - range) , max(0, target_pixel.green - range), max(0, target_pixel.blue - range)
 	};
@@ -135,28 +131,29 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 	cv::Point text_pos(0, 0);
 
 
-	ColorPixel* returnVal = new ColorPixel();
-	returnVal->red = target_pixel.red;
-	returnVal->green = target_pixel.green;
-	returnVal->blue = target_pixel.blue;
-	returnVal->x = target_pixel.x;
-	returnVal->y = target_pixel.y;
+	ColorPixel* return_val = new ColorPixel();
+	return_val->red = target_pixel.red;
+	return_val->green = target_pixel.green;
+	return_val->blue = target_pixel.blue;
+	return_val->x = target_pixel.x;
+	return_val->y = target_pixel.y;
 
-	int* best_pos = findBestPixelForColorRange(&rgb_max, &rgb_min, target_pixel, visited_array);
+	int* best_pos = find_best_pixel_for_color_range(&rgb_max, &rgb_min, target_pixel);
 	cv::Point* target;
 	if (best_pos != nullptr) {
+		region_growing2(best_pos, &rgb_max, &rgb_min, visited_array);
 		target = new cv::Point(int(best_pos[0]), best_pos[1]);
 		//overide target ColorPos
-		cv::Vec4b& color_val = color.at<cv::Vec4b>(best_pos[1], best_pos[0]);
-		const uint8_t blue = uint8_t(color_val[0]),
-			green = uint8_t(color_val[1]),
-			red = uint8_t(color_val[2]);
+//		cv::Vec4b& color_val = color.at<cv::Vec4b>(best_pos[1], best_pos[0]);
+//		const uint8_t blue = uint8_t(color_val[0]),
+//			green = uint8_t(color_val[1]),
+//			red = uint8_t(color_val[2]);
 
-		returnVal->red = red;
-		returnVal->green = green;
-		returnVal->blue = blue;
-		returnVal->x = best_pos[0];
-		returnVal->y = best_pos[1];
+//		returnVal->red = red;
+//		returnVal->green = green;
+//		returnVal->blue = blue;
+		return_val->x = best_pos[0];
+		return_val->y = best_pos[1];
 	}
 	else {
 		target = new cv::Point(target_pixel.x, target_pixel.y);
@@ -170,8 +167,7 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 	float fy = best_pos[1];
 	double* real_world_pos = new double[5]{-1000, -1000, -1000, 1, 1};
 	auto camera_space_point = new CameraSpacePoint();
-	ERROR_CHECK(kinect.coordinateMapper->MapDepthPointToCameraSpace(DepthSpacePoint{ fx, fy }, kinect.getDepthForPixel(fx,
-		fy), camera_space_point));
+	ERROR_CHECK(kinect.coordinateMapper->MapDepthPointToCameraSpace(DepthSpacePoint{ fx, fy }, kinect.getDepthForPixel(fx, fy), camera_space_point));
 	real_world_pos[0] = camera_space_point->X;
 	real_world_pos[1] = camera_space_point->Y;
 	real_world_pos[2] = camera_space_point->Z;
@@ -222,7 +218,6 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 
 	delete target;
 	delete[] best_pos;
-	delete[] real_world_pos;
 
-	return returnVal;
+	return return_val;
 }

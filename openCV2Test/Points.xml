@@ -1,2 +1,26 @@
 <points>
+<point>
+	<name>C1</name>
+	<X>303</X>
+	<Y>142</Y>
+	<R>224</R>
+	<G>210</G>
+	<B>106</B>
+</point>
+<point>
+	<name>C2</name>
+	<X>300</X>
+	<Y>183</Y>
+	<R>220</R>
+	<G>209</G>
+	<B>101</B>
+</point>
+<point>
+	<name>C3</name>
+	<X>481</X>
+	<Y>96</Y>
+	<R>137</R>
+	<G>100</G>
+	<B>69</B>
+</point>
 </points>
