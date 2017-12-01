@@ -16,9 +16,9 @@
 #define REVBUFFLEN 8142
 
 const cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) << 
-	0.0999171, -0.00158003, 0.000892209, -0.970084,
-	-0.00160604, -0.0998761, 0.0029855, 4.8805,
-	0.000844493, -0.00299935, -0.099885, -14.3536,
+	0.0918317, 0.000775034, -0.00115236, -0.232738,
+	-0.000989388, 0.0899911, -0.0183199, 3.92404,
+	0.000974538, 0.0183302, 0.0899891, -11.552,
 	0, 0, 0, 1);
 
 int startServer()
@@ -99,7 +99,7 @@ int startServer()
 				for (const auto p : realCoordsMap)
 				{
 					// Format: "P1:127.531/48.848/17.8"
-					const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0], p.second[1], -p.second[2], 1);
+					const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0] * 100, p.second[1] * 100, p.second[2] * 100, 1);
 					cv::Mat transformed_mat = transformation_mat * point_mat;
 					s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) + "/" + to_string(transformed_mat.at<double>(1, 0))
 						+ "/" + to_string(transformed_mat.at<double>(2, 0)) + "\n";

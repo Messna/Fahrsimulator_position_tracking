@@ -18,6 +18,10 @@
 
 #include <Kinect.h>
 
+#include <thread>
+#include <ppl.h>
+#include <wrl/client.h>
+
 using namespace std;
 
 #define ERROR_CHECK(ret)                                \
@@ -34,8 +38,8 @@ using namespace std;
   }
 
 
-class KinectLayer {
-
+class KinectLayer
+{
 	// ******* kinect ********
 private:
 	CComPtr<IKinectSensor> kinect = nullptr;
@@ -43,7 +47,8 @@ public:
 	CComPtr<ICoordinateMapper> coordinateMapper = nullptr;
 
 private:
-	void initialize() {
+	void initialize()
+	{
 		ERROR_CHECK(GetDefaultKinectSensor(&kinect));
 		ERROR_CHECK(kinect->Open());
 		BOOLEAN isOpen;
@@ -63,32 +68,80 @@ public:
 	int colorHeight;
 private:
 	unsigned int colorBytesPerPixel;
-	void initializeColorFrame() {
-		CComPtr<IColorFrameSource> colorFrameSource;
+
+	void initializeColorFrame()
+	{
+		// Open Color Reader
+		Microsoft::WRL::ComPtr<IColorFrameSource> colorFrameSource;
 		ERROR_CHECK(kinect->get_ColorFrameSource(&colorFrameSource));
 		ERROR_CHECK(colorFrameSource->OpenReader(&colorFrameReader));
-		CComPtr<IFrameDescription> colorFrameDescription;
-		ERROR_CHECK(colorFrameSource->CreateFrameDescription(ColorImageFormat::ColorImageFormat_Bgra, &colorFrameDescription));
-		colorFrameDescription->get_Width(&colorWidth);
-		colorFrameDescription->get_Height(&colorHeight);
-		colorFrameDescription->get_BytesPerPixel(&colorBytesPerPixel);
+
+		// Retrieve Color Description
+		Microsoft::WRL::ComPtr<IFrameDescription> colorFrameDescription;
+		ERROR_CHECK(colorFrameSource->CreateFrameDescription(ColorImageFormat::ColorImageFormat_Bgra, &colorFrameDescription)
+		);
+		ERROR_CHECK(colorFrameDescription->get_Width(&colorWidth)); // 1920
+		ERROR_CHECK(colorFrameDescription->get_Height(&colorHeight)); // 1080
+		ERROR_CHECK(colorFrameDescription->get_BytesPerPixel(&colorBytesPerPixel)); // 4
+
+		// Allocation Color Buffer
 		colorBuffer.resize(colorWidth * colorHeight * colorBytesPerPixel);
+
 		color_initialized = true;
 	}
-	void updateColorFrame() {
-		if (!color_initialized) initializeColorFrame();
-		CComPtr<IColorFrame> colorFrame;
-		auto ret = colorFrameReader->AcquireLatestFrame(&colorFrame);
-		if (FAILED(ret))return;
-		ERROR_CHECK(colorFrame->CopyConvertedFrameDataToArray((UINT)colorBuffer.size(), &colorBuffer[0], ColorImageFormat::ColorImageFormat_Bgra));
+
+	void updateColorFrame()
+	{
+		// Retrieve Color Frame
+		Microsoft::WRL::ComPtr<IColorFrame> colorFrame;
+		const HRESULT ret = colorFrameReader->AcquireLatestFrame(&colorFrame);
+		if (FAILED(ret))
+		{
+			return;
+		}
+
+		// Convert Format ( YUY2 -> BGRA )
+		ERROR_CHECK(colorFrame->CopyConvertedFrameDataToArray(static_cast<UINT>(colorBuffer.size()), &colorBuffer[0],
+			ColorImageFormat::ColorImageFormat_Bgra));
 	}
+
 public:
 	cv::Mat rgbImage;
 	void setRGB() { setRGB(rgbImage); }
-	void setRGB(cv::Mat& image) {
+
+	void setRGB(cv::Mat& image)
+	{
+		if (!color_initialized) initializeColorFrame();
+
 		updateColorFrame();
-		image = cv::Mat(colorHeight, colorWidth, CV_8UC4, &colorBuffer[0]);
-		// cv::cvtColor(image,image,CV_BGRA2BGR); // when you save with VideoWriter
+
+		std::vector<ColorSpacePoint> colorSpacePoints(depthWidth * depthHeight);
+		ERROR_CHECK(coordinateMapper->MapDepthFrameToColorSpace(depthBuffer.size(), &depthBuffer[0], colorSpacePoints.size(),
+			&colorSpacePoints[0]));
+		// Mapping Color to Depth Resolution
+		std::vector<BYTE> buffer(depthWidth * depthHeight * colorBytesPerPixel);
+
+		Concurrency::parallel_for(0, depthHeight, [&](const int depthY)
+		{
+			const unsigned int depthOffset = depthY * depthWidth;
+			for (int depthX = 0; depthX < depthWidth; depthX++)
+			{
+				unsigned int depthIndex = depthOffset + depthX;
+				const int colorX = static_cast<int>(colorSpacePoints[depthIndex].X + 0.5f);
+				const int colorY = static_cast<int>(colorSpacePoints[depthIndex].Y + 0.5f);
+				if ((0 <= colorX) && (colorX < colorWidth) && (0 <= colorY) && (colorY < colorHeight))
+				{
+					const unsigned int colorIndex = (colorY * colorWidth + colorX) * colorBytesPerPixel;
+					depthIndex = depthIndex * colorBytesPerPixel;
+					buffer[depthIndex + 0] = colorBuffer[colorIndex + 0];
+					buffer[depthIndex + 1] = colorBuffer[colorIndex + 1];
+					buffer[depthIndex + 2] = colorBuffer[colorIndex + 2];
+					buffer[depthIndex + 3] = colorBuffer[colorIndex + 3];
+				}
+			}
+		});
+
+		image = cv::Mat(depthHeight, depthWidth, CV_8UC4, &buffer[0]).clone();
 	}
 
 	// ******** depth *******
@@ -100,40 +153,52 @@ private:
 	int depthHeight;
 	UINT16 maxDepth;
 	UINT16 minDepth;
-	void initializeDepthFrame() {
-		CComPtr<IDepthFrameSource> depthFrameSource;
+
+	void initializeDepthFrame()
+	{
+		// Open Depth Reader
+		Microsoft::WRL::ComPtr<IDepthFrameSource> depthFrameSource;
 		ERROR_CHECK(kinect->get_DepthFrameSource(&depthFrameSource));
 		ERROR_CHECK(depthFrameSource->OpenReader(&depthFrameReader));
-		CComPtr<IFrameDescription> depthFrameDescription;
-		ERROR_CHECK(depthFrameSource->get_FrameDescription(
-			&depthFrameDescription));
-		ERROR_CHECK(depthFrameDescription->get_Width(&depthWidth));
-		ERROR_CHECK(depthFrameDescription->get_Height(&depthHeight));
-		ERROR_CHECK(depthFrameSource->get_DepthMaxReliableDistance(&maxDepth));
-		ERROR_CHECK(depthFrameSource->get_DepthMinReliableDistance(&minDepth));
+
+		// Retrieve Depth Description
+		Microsoft::WRL::ComPtr<IFrameDescription> depthFrameDescription;
+		ERROR_CHECK(depthFrameSource->get_FrameDescription(&depthFrameDescription));
+		ERROR_CHECK(depthFrameDescription->get_Width(&depthWidth)); // 512
+		ERROR_CHECK(depthFrameDescription->get_Height(&depthHeight)); // 424
+
+		// Allocation Depth Buffer
 		depthBuffer.resize(depthWidth * depthHeight);
 		depth_initialized = true;
 	}
-	void updateDepthFrame() {
+
+	void updateDepthFrame()
+	{
 		if (!depth_initialized) initializeDepthFrame();
-		CComPtr<IDepthFrame> depthFrame;
-		auto ret = depthFrameReader->AcquireLatestFrame(&depthFrame);
-		if (FAILED(ret))return;
-		ERROR_CHECK(depthFrame->CopyFrameDataToArray((UINT)depthBuffer.size(), &depthBuffer[0]));
+		// Retrieve Depth Frame
+		Microsoft::WRL::ComPtr<IDepthFrame> depthFrame;
+		const HRESULT ret = depthFrameReader->AcquireLatestFrame(&depthFrame);
+		if (FAILED(ret))
+		{
+			return;
+		}
+
+		// Retrieve Depth Data
+		ERROR_CHECK(depthFrame->CopyFrameDataToArray(static_cast<UINT>(depthBuffer.size()), &depthBuffer[0]));
 	}
+
 public:
 	cv::Mat depthImage;
 	void setDepth(bool raw = true) { setDepth(depthImage, raw); }
-	void setDepth(cv::Mat& depthImage, bool raw = true) {
+
+	void setDepth(cv::Mat& depthImage, bool raw = true)
+	{
 		updateDepthFrame();
-		depthImage = cv::Mat(depthHeight, depthWidth, CV_16UC1);
-		for (int i = 0; i < depthImage.total(); i++) {
-			double rate = depthBuffer[i] / (double)maxDepth;
-			depthImage.at<UINT16>(i) = (raw) ? depthBuffer[i] : static_cast<UINT16>(255 * 255 * rate); // [0, 65535]
-		}
+		depthImage = cv::Mat(depthHeight, depthWidth, CV_16UC1, &depthBuffer[0]);
 	}
-	int getDepthForPixel(int x, int y) {
-		updateDepthFrame();
+
+	int getDepthForPixel(int x, int y)
+	{
 		return depthBuffer[y * depthWidth + x];
 	}
 
@@ -144,7 +209,9 @@ private:
 	int infraredWidth;
 	int infraredHeight;
 	vector<UINT16> infraredBuffer;
-	void initializeInfraredFrame() {
+
+	void initializeInfraredFrame()
+	{
 		CComPtr<IInfraredFrameSource> infraredFrameSource;
 		ERROR_CHECK(kinect->get_InfraredFrameSource(&infraredFrameSource));
 		ERROR_CHECK(infraredFrameSource->OpenReader(&infraredFrameReader));
@@ -156,17 +223,22 @@ private:
 		infraredBuffer.resize(infraredWidth * infraredHeight);
 		infrared_initialized = true;
 	}
-	void updateInfraredFrame() {
+
+	void updateInfraredFrame()
+	{
 		if (!infrared_initialized) initializeInfraredFrame();
 		CComPtr<IInfraredFrame> infraredFrame;
 		auto ret = infraredFrameReader->AcquireLatestFrame(&infraredFrame);
 		if (FAILED(ret)) return;
 		ERROR_CHECK(infraredFrame->CopyFrameDataToArray((UINT)infraredBuffer.size(), &infraredBuffer[0]));
 	}
+
 public:
 	cv::Mat infraredImage;
 	void setInfrared() { setInfrared(infraredImage); }
-	void setInfrared(cv::Mat& infraredImage) {
+
+	void setInfrared(cv::Mat& infraredImage)
+	{
 		updateInfraredFrame();
 		infraredImage = cv::Mat(infraredHeight, infraredWidth, CV_16UC1, &infraredBuffer[0]);
 	}
@@ -178,8 +250,10 @@ private:
 	vector<BYTE> bodyIndexBuffer;
 	int bodyIndexWidth;
 	int bodyIndexHeight;
-	cv::Vec3b   colors[8];
-	void initializeBodyIndexFrame() {
+	cv::Vec3b colors[8];
+
+	void initializeBodyIndexFrame()
+	{
 		CComPtr<IBodyIndexFrameSource> bodyIndexFrameSource;
 		ERROR_CHECK(kinect->get_BodyIndexFrameSource(&bodyIndexFrameSource));
 		ERROR_CHECK(bodyIndexFrameSource->OpenReader(&bodyIndexFrameReader));
@@ -200,29 +274,38 @@ private:
 
 		bodyIndex_initialized = true;
 	}
-	void updateBodyIndexFrame() {
+
+	void updateBodyIndexFrame()
+	{
 		if (!bodyIndex_initialized) initializeBodyIndexFrame();
 		CComPtr<IBodyIndexFrame> bodyIndexFrame;
 		auto ret = bodyIndexFrameReader->AcquireLatestFrame(&bodyIndexFrame);
 		if (FAILED(ret)) return;
 		ERROR_CHECK(bodyIndexFrame->CopyFrameDataToArray((UINT)bodyIndexBuffer.size(), &bodyIndexBuffer[0]));
 	}
+
 public:
 	cv::Mat bodyIndexImage;
 	void setBodyIndex(bool raw = true) { setBodyIndex(bodyIndexImage, raw); }
-	void setBodyIndex(cv::Mat& bodyIndexImage, bool raw = true) {
+
+	void setBodyIndex(cv::Mat& bodyIndexImage, bool raw = true)
+	{
 		updateBodyIndexFrame();
-		if (raw) {
+		if (raw)
+		{
 			bodyIndexImage = cv::Mat(bodyIndexHeight, bodyIndexWidth, CV_8UC1);
-			for (int i = 0; i < bodyIndexHeight*bodyIndexWidth; i++) {
+			for (int i = 0; i < bodyIndexHeight * bodyIndexWidth; i++)
+			{
 				int y = i / bodyIndexWidth;
 				int x = i % bodyIndexWidth;
 				bodyIndexImage.at<uchar>(y, x) = bodyIndexBuffer[i];
 			}
 		}
-		else {
+		else
+		{
 			bodyIndexImage = cv::Mat(bodyIndexHeight, bodyIndexWidth, CV_8UC3);
-			for (int i = 0; i < bodyIndexHeight*bodyIndexWidth; i++) {
+			for (int i = 0; i < bodyIndexHeight * bodyIndexWidth; i++)
+			{
 				int y = i / bodyIndexWidth;
 				int x = i % bodyIndexWidth;
 				int c = (bodyIndexBuffer[i] != 255) ? bodyIndexBuffer[i] + 1 : 0;
@@ -235,29 +318,37 @@ public:
 	CComPtr<IBodyFrameReader> bodyFrameReader = nullptr;
 	BOOLEAN body_initialized = false;
 	IBody* bodies[BODY_COUNT];
-	void initializeBodyFrame() {
+
+	void initializeBodyFrame()
+	{
 		CComPtr<IBodyFrameSource> bodyFrameSource;
 		ERROR_CHECK(kinect->get_BodyFrameSource(&bodyFrameSource));
 		ERROR_CHECK(bodyFrameSource->OpenReader(&bodyFrameReader));
 		CComPtr<IFrameDescription> bodyFrameDescription;
-		for (auto& body : bodies) {
+		for (auto& body : bodies)
+		{
 			body = nullptr;
 		}
 		body_initialized = true;
 	}
-	void updateBodyFrame() {
+
+	void updateBodyFrame()
+	{
 		if (!body_initialized) initializeBodyFrame();
 		CComPtr<IBodyFrame> bodyFrame;
 		auto ret = bodyFrameReader->AcquireLatestFrame(&bodyFrame);
 		if (FAILED(ret)) return;
-		for (auto& body : bodies) {
-			if (body != nullptr) {
+		for (auto& body : bodies)
+		{
+			if (body != nullptr)
+			{
 				body->Release();
 				body = nullptr;
 			}
 		}
 		ERROR_CHECK(bodyFrame->GetAndRefreshBodyData(BODY_COUNT, &bodies[0]));
 	}
+
 public:
 	// Joint.Position.{X,Y,Z}  // CameraSpacePoint
 	//    DepthSpacePoint dp;
@@ -267,14 +358,17 @@ public:
 	// Joint.TrackingState  == TrackingState::TrackingState_{Tracked,Inferred}
 	vector<int> skeletonId;
 	vector<UINT64> skeletonTrackingId;
-	vector<vector<Joint> > skeleton;
+	vector<vector<Joint>> skeleton;
 	void setSkeleton() { setSkeleton(skeleton); }
-	void setSkeleton(vector<vector<Joint> >& skeleton) {
+
+	void setSkeleton(vector<vector<Joint>>& skeleton)
+	{
 		updateBodyFrame();
 		skeleton.clear();
 		skeletonId.clear();
 		skeletonTrackingId.clear();
-		for (int i = 0; i < BODY_COUNT; i++) {
+		for (int i = 0; i < BODY_COUNT; i++)
+		{
 			auto body = bodies[i];
 			if (body == nullptr) continue;
 			BOOLEAN isTracked = false;
@@ -291,9 +385,11 @@ public:
 			skeletonTrackingId.push_back(trackingId);
 		}
 	}
+
 	// HandState::HandState_{Unknown,NotTracked,Open,Closed,Lasso}
 	// TrackingConfidence::TrackingConfidence_{Low,Hight}
-	pair<int, int> handState(int id = 0, bool isLeft = true) {
+	pair<int, int> handState(int id = 0, bool isLeft = true)
+	{
 		if (!body_initialized) throw runtime_error("body not initialized");
 		if (id < 0 || id >= BODY_COUNT) throw runtime_error("handstate: bad id " + id);
 		pair<int, int> ans(HandState::HandState_Unknown, TrackingConfidence::TrackingConfidence_Low);
@@ -307,35 +403,43 @@ public:
 		if (!isTracked) return ans;
 		HandState handState;
 		TrackingConfidence handConfidence;
-		if (isLeft) {
+		if (isLeft)
+		{
 			hResult = body->get_HandLeftState(&handState);
 			if (!SUCCEEDED(hResult)) return ans;
 			hResult = body->get_HandLeftConfidence(&handConfidence);
 			if (!SUCCEEDED(hResult)) return ans;
 		}
-		else {
+		else
+		{
 			hResult = body->get_HandRightState(&handState);
 			if (!SUCCEEDED(hResult)) return ans;
 			hResult = body->get_HandRightConfidence(&handConfidence);
 			if (!SUCCEEDED(hResult)) return ans;
 		}
-		ans.first = handState; ans.second = handConfidence;
+		ans.first = handState;
+		ans.second = handConfidence;
 		return ans;
 	}
 
 public:
 	KinectLayer() { initialize(); }
-	~KinectLayer() {
+
+	~KinectLayer()
+	{
 		if (kinect != nullptr) kinect->Close();
 	}
-	cv::Rect boundingBoxInColorSpace(vector<CameraSpacePoint>& v) {
+
+	cv::Rect boundingBoxInColorSpace(vector<CameraSpacePoint>& v)
+	{
 		int minX = INT_MAX, maxX = INT_MIN, minY = INT_MAX, maxY = INT_MIN;
-		for (CameraSpacePoint sp : v) {
+		for (CameraSpacePoint sp : v)
+		{
 			ColorSpacePoint cp;
 			coordinateMapper->MapCameraPointToColorSpace(sp, &cp);
 			if (minX > (int)cp.X) minX = (int)cp.X;
 			if (maxX < (int)cp.X) maxX = (int)cp.X;
-			if (minY >(int)cp.Y) minY = (int)cp.Y;
+			if (minY > (int)cp.Y) minY = (int)cp.Y;
 			if (maxY < (int)cp.Y) maxY = (int)cp.Y;
 		}
 		if (maxX <= minX || maxY <= minY) return cv::Rect(0, 0, 0, 0);

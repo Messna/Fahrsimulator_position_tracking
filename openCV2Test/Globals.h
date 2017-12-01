@@ -5,8 +5,8 @@
 #include "opencv2\opencv.hpp"
 #include "KinectLayer.h"
 
-#define COLOR_WIDTH 1920    
-#define COLOR_HEIGHT 1080    
+#define COLOR_WIDTH 512    
+#define COLOR_HEIGHT 424    
 #define DEPTH_WIDTH 512    
 #define DEPTH_HEIGHT 424      
 #define CHANNEL 3
@@ -22,6 +22,7 @@ const float fovColorX = 84.1;
 const float fovColorY = 53.8;
 const double generalTolerance = 0.1;
 const int max_search_arealength = 25;
+const int resize_factor = 2;
 
 int clickedX = 1;
 int clickedY = 1;
