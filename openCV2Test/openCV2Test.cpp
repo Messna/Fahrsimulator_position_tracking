@@ -35,16 +35,33 @@ XMLWriter* writer = nullptr;
 
 int drawColor()
 {
+	for (pair<string, double*> e : pointVec)
+	{
+		cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2.0 / resize_factor, cv::Scalar(0.0, 0.0, 0.0), -1);
+	}
 
-		for (pair<string, double*> e : pointVec)
-		{
-			cv::circle(color, cv::Point2d(e.second[3], e.second[4]), 2.0 / resize_factor, cv::Scalar(0.0, 0.0, 0.0), -1);
-		}
+	bool** visited_array = new bool*[COLOR_WIDTH];
+	for (int i = 0; i < COLOR_WIDTH; i++)
+	{
+		visited_array[i] = new bool[COLOR_HEIGHT];
+	}
 
 	for (auto& p : colorMap)
 	{
-		find_color_and_mark(p.second, p.first);
+		ColorPixel* adaptedColor = find_color_and_mark(p.second, visited_array, p.first);
+		p.second.red = adaptedColor->red;
+		p.second.green = adaptedColor->green;
+		p.second.blue = adaptedColor->blue;
+		p.second.x = adaptedColor->x;
+		p.second.y = adaptedColor->y;
 	}
+
+
+	for (int i = 0; i < COLOR_WIDTH; i++)
+	{
+		delete visited_array[i];
+	}
+	delete[] visited_array;
 
 	resize(color, color, cv::Size(color.cols * resize_factor, color.rows * resize_factor));
 	imshow("color image", color);
@@ -89,7 +106,8 @@ static ColorPixel add_point(const int x, const int y)
 	const int rec_x = x > 25 ? (x < COLOR_WIDTH - 25 ? x - 25 : COLOR_WIDTH - 50) : 1;
 	const int rec_y = y > 25 ? (y < COLOR_HEIGHT - 25 ? y - 25 : COLOR_HEIGHT - 50) : 1;
 
-	cout << "Real World: " << setprecision(6) << "P" << pointVec.size() << " X:" << real_world_pos[0] << " Y:" << real_world_pos[1] << " Z:" << real_world_pos[2] << endl;
+	cout << "Real World: " << setprecision(6) << "P" << pointVec.size() << " X:" << real_world_pos[0] << " Y:" <<
+		real_world_pos[1] << " Z:" << real_world_pos[2] << endl;
 
 	return ColorPixel{red, green, blue, rec_x, rec_y};
 }
@@ -118,6 +136,16 @@ static void onClick(const int event, const int x, const int y, int f, void*)
 
 int main()
 {
+	auto already_checked_pixel = unordered_map<string, bool>();
+	for (int i = 0; i < 10000; i++)
+	{
+		string key = to_string(i) + "|" + to_string(i);
+		auto iterator = already_checked_pixel.find(key);
+		if (iterator == already_checked_pixel.end()) {
+			already_checked_pixel.insert_or_assign(iterator, key, true);
+		}
+	}
+
 	cv::namedWindow("color image", CV_WINDOW_AUTOSIZE);
 	cv::setMouseCallback("color image", onClick);
 
