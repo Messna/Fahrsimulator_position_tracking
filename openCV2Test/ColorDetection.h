@@ -3,7 +3,6 @@
 #include "opencv2/opencv.hpp"
 #include "ColorPixel.h"
 #include "KinectLayer.h"
-#include <unordered_map>
 #include <stack>
 
 using namespace std;
@@ -11,6 +10,8 @@ using namespace std;
 long int sum_x;
 long int sum_y;
 long int pixel_count;
+
+list<cv::Vec4b> previous_colors;
 
 
 inline bool has_target_color(ColorPixel* target_color_max, ColorPixel* target_color_min, cv::Vec4b& color_pxl) {
@@ -119,7 +120,7 @@ inline int* find_best_pixel_for_color_range(ColorPixel* target_color_max, ColorP
 	return best_pos;
 }
 
-inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_array, string s = "unknown",
+inline ColorPixel find_color_and_mark(ColorPixel& target_pixel, bool** visited_array, string name,
                                        const double tolerance_factor = generalTolerance) {
 	const int range = tolerance_factor * 255 + 0.5;
 	ColorPixel rgb_min = {
@@ -130,13 +131,12 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 	};
 	cv::Point text_pos(0, 0);
 
-
-	ColorPixel* return_val = new ColorPixel();
-	return_val->red = target_pixel.red;
-	return_val->green = target_pixel.green;
-	return_val->blue = target_pixel.blue;
-	return_val->x = target_pixel.x;
-	return_val->y = target_pixel.y;
+	auto return_val = ColorPixel();
+	return_val.red = target_pixel.red;
+	return_val.green = target_pixel.green;
+	return_val.blue = target_pixel.blue;
+	return_val.x = target_pixel.x;
+	return_val.y = target_pixel.y;
 
 	int* best_pos = find_best_pixel_for_color_range(&rgb_max, &rgb_min, target_pixel);
 	cv::Point* target;
@@ -144,16 +144,14 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 		region_growing2(best_pos, &rgb_max, &rgb_min, visited_array);
 		target = new cv::Point(int(best_pos[0]), best_pos[1]);
 		//overide target ColorPos
-//		cv::Vec4b& color_val = color.at<cv::Vec4b>(best_pos[1], best_pos[0]);
-//		const uint8_t blue = uint8_t(color_val[0]),
-//			green = uint8_t(color_val[1]),
-//			red = uint8_t(color_val[2]);
-
-//		returnVal->red = red;
-//		returnVal->green = green;
-//		returnVal->blue = blue;
-		return_val->x = best_pos[0];
-		return_val->y = best_pos[1];
+		auto& color_val = color.at<cv::Vec4b>(best_pos[1], best_pos[0]);
+		if (color_val[0] != 0 && color_val[1] != 0 && color_val[2] != 0) {
+			return_val.red = round(return_val.red * 0.97 + color_val[2] * 0.03);
+			return_val.green = round(return_val.green * 0.97 + color_val[1] * 0.03);
+			return_val.blue = round(return_val.blue * 0.97 + color_val[0] * 0.03);
+		}
+		return_val.x = best_pos[0];
+		return_val.y = best_pos[1];
 	}
 	else {
 		target = new cv::Point(target_pixel.x, target_pixel.y);
@@ -165,7 +163,7 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 
 	float fx = best_pos[0];
 	float fy = best_pos[1];
-	double* real_world_pos = new double[5]{-1000, -1000, -1000, 1, 1};
+	const auto real_world_pos = new double[5]{-1000, -1000, -1000, 1, 1};
 	auto camera_space_point = new CameraSpacePoint();
 	ERROR_CHECK(kinect.coordinateMapper->MapDepthPointToCameraSpace(DepthSpacePoint{ fx, fy }, kinect.getDepthForPixel(fx, fy), camera_space_point));
 	real_world_pos[0] = camera_space_point->X;
@@ -199,9 +197,8 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 	          cv::Scalar(255, 255, 255));
 
 	// Put real coords in map for Unity
-	string ps = s;
+	string ps = name;
 	ps[0] = 'P';
-	map<string, double *> test_coords_map = map<string, double *>();
 	realCoordsMap[ps] = new double[3];
 	realCoordsMap.at(ps)[0] = real_world_pos[0];
 	realCoordsMap.at(ps)[1] = real_world_pos[1];
@@ -213,7 +210,7 @@ inline ColorPixel* find_color_and_mark(ColorPixel& target_pixel, bool** visited_
 	ostringstream os;
 	os << real_world_pos[2];
 	const string str = os.str();
-	string output_str = s.append(" ").append(str);
+	string output_str = name.append(" ").append(str);
 	putText(color, output_str.c_str(), text_pos, 1, 1.5 / resize_factor, cv::Scalar(255.0, 255.0, 255.0));
 
 	delete target;

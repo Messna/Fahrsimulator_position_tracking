@@ -9,13 +9,57 @@
 #pragma comment(lib, "Ws2_32.lib")
 #define REVBUFFLEN 8142
 
-const cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) <<
+cv::Mat transformation_mat = (cv::Mat_<double>(4, 4) <<
 	0.0918317, 0.000775034, -0.00115236, -0.232738,
 	-0.000989388, 0.0899911, -0.0183199, 3.92404,
 	0.000974538, 0.0183302, 0.0899891, -11.552,
 	0, 0, 0, 1);
 
+static bool exists_test(const string& name) {
+	struct stat buffer;
+	return (stat(name.c_str(), &buffer) == 0);
+}
+
+template<typename Out>
+void split(const string &s, char delim, Out result) {
+	stringstream ss(s);
+	string item;
+	while (getline(ss, item, delim)) {
+		*(result++) = item;
+	}
+}
+vector<string> split(const string &s, char delim) {
+	vector<string> elems;
+	split(s, delim, back_inserter(elems));
+	return elems;
+}
+
+void load_transformation_matrix(string file = "Matrix.txt") {
+	if (exists_test(file)) {
+		auto in = ifstream(file);
+		string line;
+		auto mat_values = new double[4][4];
+		int i = 0;
+		while (getline(in, line)) {
+			auto line_vec = split(line, ';');
+
+			for (int j = 0; j < line_vec.size(); j++) {
+				mat_values[i][j] = stod(line_vec[j]);
+			}
+			i++;
+		}
+
+		transformation_mat = (cv::Mat_<double>(4, 4) <<
+			mat_values[0][0], mat_values[0][1], mat_values[0][2], mat_values[0][3],
+			mat_values[1][0], mat_values[1][1], mat_values[1][2], mat_values[1][3],
+			mat_values[2][0], mat_values[2][1], mat_values[2][2], mat_values[2][3],
+			mat_values[3][0], mat_values[3][1], mat_values[3][2], mat_values[3][3]);
+	}
+}
+
 inline int startServer() {
+	load_transformation_matrix();
+
 	// Initialize Winsock.
 	bool run = true;
 
@@ -41,8 +85,6 @@ inline int startServer() {
 	sockaddr_in service;
 	service.sin_family = AF_INET;
 	service.sin_addr.s_addr = inet_addr("127.0.0.1");
-	//string ip = "127.0.0.1";
-	//InetPton(AF_INET, LPCTSTR(ip.c_str()), &service.sin_addr.s_addr);
 	service.sin_port = htons(27015);
 
 	if (::bind(ListenSocket, reinterpret_cast<SOCKADDR *>(& service), sizeof service) == SOCKET_ERROR) {
@@ -65,7 +107,7 @@ inline int startServer() {
 
 	while (run) {
 		wprintf(L"Waiting for client to connect...\n");
-		const SOCKET AcceptSocket = accept(ListenSocket, nullptr, nullptr);
+		const auto AcceptSocket = accept(ListenSocket, nullptr, nullptr);
 
 		if (AcceptSocket == INVALID_SOCKET) {
 			wprintf(L"accept failed with error: %ld\n", WSAGetLastError());
@@ -85,8 +127,8 @@ inline int startServer() {
 					// Format: "P1:127.531/48.848/17.8"
 					const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0] * 100, p.second[1] * 100, p.second[2] * 100, 1);
 					cv::Mat transformed_mat = transformation_mat * point_mat;
-					s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) + "/" + to_string(
-							transformed_mat.at<double>(1, 0))
+					s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) 
+						+ "/" + to_string(transformed_mat.at<double>(1, 0))
 						+ "/" + to_string(transformed_mat.at<double>(2, 0)) + "\n";
 					cout << s << endl;
 				}

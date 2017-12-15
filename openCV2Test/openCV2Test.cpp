@@ -40,12 +40,12 @@ int drawColor() {
 	}
 
 	for (auto& p : colorMap) {
-		ColorPixel* adaptedColor = find_color_and_mark(p.second, visited_array, p.first);
-		p.second.red = adaptedColor->red;
-		p.second.green = adaptedColor->green;
-		p.second.blue = adaptedColor->blue;
-		p.second.x = adaptedColor->x;
-		p.second.y = adaptedColor->y;
+		const auto adapted_color = find_color_and_mark(p.second, visited_array, p.first);
+		p.second.red = adapted_color.red;
+		p.second.green = adapted_color.green;
+		p.second.blue = adapted_color.blue;
+		p.second.x = adapted_color.x;
+		p.second.y = adapted_color.y;
 	}
 
 
@@ -75,7 +75,6 @@ static ColorPixel add_point(const int x, const int y) {
 	cout << "Color: B: " << static_cast<int>(blue) << " G: " << static_cast<int>(green) << " R: " << static_cast<int>(red)
 		<< endl;
 
-	//double* colorAngleArr = GetAngleFromColorIndex(x, y);
 	double* real_world_pos = new double[5]{-1000, -1000, -1000, 1, 1};
 	CameraSpacePoint* camera_space_point = new CameraSpacePoint();
 	const float fx = x;
@@ -123,10 +122,10 @@ int main() {
 
 	kinect.setDepth();
 	kinect.setRGB(color);
-	while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) {// Check if Matrix is filled now
-		kinect.setDepth();
-		kinect.setRGB(color);
-	}
+	//while (color.at<cv::Vec4b>(100, 100) == cv::Vec4b(0, 0, 0, 0)) {// Check if Matrix is filled now
+	//	kinect.setDepth();
+	//	kinect.setRGB(color);
+	//}
 
 	writer = new XMLWriter("Points.xml");
 	colorMap = *(writer->getPixels());
