@@ -54,6 +54,8 @@ void load_transformation_matrix(string file = "Matrix.txt") {
 			mat_values[1][0], mat_values[1][1], mat_values[1][2], mat_values[1][3],
 			mat_values[2][0], mat_values[2][1], mat_values[2][2], mat_values[2][3],
 			mat_values[3][0], mat_values[3][1], mat_values[3][2], mat_values[3][3]);
+
+		cout << transformation_mat << endl;
 	}
 }
 
