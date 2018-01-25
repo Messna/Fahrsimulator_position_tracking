@@ -125,18 +125,18 @@ inline int startServer() {
 			cout << "Received: " << string(recvBuffer) << endl;
 			if (string(recvBuffer).compare("send_points") == 0) {
 				string s = "";
-				double testCoords[]  = { -42.584, 31.7217, 89.1 };
-				//for (const auto p : realCoordsMap) {
+				//double testCoords[]  = { -42.584, 31.7217, 89.1 };
+				for (const auto p : realCoordsMap) {
 					// Format: "P1:127.531/48.848/17.8"
-					//const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0] * 100, p.second[1] * 100, p.second[2] * 100, 1);
-				const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << testCoords[0], testCoords[1], testCoords[2], 1);
+				const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << p.second[0] * 100, p.second[1] * 100, -p.second[2] * 100, 1);
+				//const cv::Mat point_mat = (cv::Mat_<double>(4, 1) << testCoords[0], testCoords[1], testCoords[2], 1);
 					cv::Mat transformed_mat = transformation_mat * point_mat;
-					//s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) 
-					s += "P1:" + to_string(transformed_mat.at<double>(0, 0))
+					s += p.first + ":" + to_string(transformed_mat.at<double>(0, 0)) 
+					//s += "P1:" + to_string(transformed_mat.at<double>(0, 0))
 						+ "/" + to_string(transformed_mat.at<double>(1, 0))
 						+ "/" + to_string(transformed_mat.at<double>(2, 0)) + "\n";
 					cout << s << endl;
-				//}
+				}
 				send(AcceptSocket, s.c_str(), s.length() + 1, MSG_OOB);
 				cout << "Sent data" << endl;
 			}

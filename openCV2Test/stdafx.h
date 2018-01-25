@@ -6,7 +6,8 @@
 #pragma once
 #define _CRT_SECURE_NO_WARNINGS
 #include "targetver.h"
-
+#pragma once
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <stdio.h>
 #include <tchar.h>
 
